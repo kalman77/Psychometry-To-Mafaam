@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# build output — mapam-runner.html is committed on purpose (it is the deliverable),
+# everything else a build produces is not
+dist/
+*.tsbuildinfo
+
+# logs and caches
+npm-debug.log*
+yarn-error.log*
+.npm/
+.cache/
+
+# editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# local env
+.env
+.env.local

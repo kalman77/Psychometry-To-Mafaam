@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מפע״ם — הרצת בחינה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500&family=Bellefair&family=Noto+Serif+Hebrew:wght@400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* a quiet room: desaturated eucalyptus and warm paper, nothing that raises a pulse */
+  --mist:#EDF1EE; --mist-deep:#E3EAE5; --surface:#FCFDFC;
+  --ink:#243330; --muted:#79877F; --line:#DFE7E2;
+  --sage:#6F9D86; --sage-050:#E6EFE9; --sage-100:#CFE0D6;
+  --sand:#D5B074; --clay:#C48C82;
+  --deep:#1F2B27;
+
+  --display:"Bellefair",Georgia,serif;
+  --sans:"Rubik","Segoe UI",system-ui,sans-serif;
+  --read:"Noto Serif Hebrew",Georgia,serif;
+  --num:"Outfit","Rubik",system-ui,sans-serif;
+
+  --r-lg:22px; --r-md:16px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(36,51,48,.04), 0 18px 40px -24px rgba(36,51,48,.22);
+  --shadow-lift:0 2px 4px rgba(36,51,48,.05), 0 28px 56px -28px rgba(36,51,48,.28);
+  --ease:cubic-bezier(.22,.8,.28,1);
+  --pad:clamp(20px,4vw,44px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--mist);color:var(--ink);
+  font-family:var(--sans);font-weight:300;font-size:17px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.15;margin:0;letter-spacing:.01em}
+h1{font-size:clamp(34px,5.4vw,54px)}
+
+/* the journey rail: the whole sitting at a glance, so time is never a surprise */
+#rail{position:fixed;inset-block-start:0;inset-inline:0;height:2px;background:var(--mist-deep);z-index:60}
+#rail i{display:block;height:100%;width:0;background:var(--sage-100);transition:width .6s var(--ease)}
+
+/* the time dial: one question's clock, unwinding */
+#dial{
+  position:fixed;inset-block-start:16px;left:16px;z-index:61;
+  width:76px;height:76px;border-radius:50%;
+  background:var(--surface);box-shadow:var(--shadow);
+  display:grid;place-items:center;
+  transition:opacity .35s var(--ease),transform .35s var(--ease);
+}
+#dial.hidden{opacity:0;transform:scale(.9);pointer-events:none}
+#dial svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#dial circle{fill:none;stroke-width:2.5;stroke-linecap:round}
+#dial .track{stroke:var(--sage-050)}
+#dial .arc{stroke:var(--sage);transition:stroke .9s linear}
+#dial.warm .arc{stroke:var(--sand)} #dial.late .arc{stroke:var(--clay)}
+#dial b{font-family:var(--num);font-weight:400;font-size:16px;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;direction:ltr;color:var(--ink);transition:color .9s linear}
+#dial.late b{color:var(--clay)}
+@media (max-width:720px){#dial{width:60px;height:60px;inset-block-start:10px;left:10px}#dial b{font-size:14px}}
+
+/* shell */
+.stage{min-height:100dvh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:26px var(--pad) 0;justify-content:center}
+.tag{font-size:12.5px;letter-spacing:.06em;color:var(--muted);font-weight:400}
+.tag.dot::before{content:'';display:inline-block;width:3px;height:3px;border-radius:50%;
+  background:var(--sage-100);margin-inline-end:10px;vertical-align:middle}
+
+.sheet{flex:1;width:100%;max-width:1120px;margin:0 auto;padding:22px var(--pad) 0;
+  display:grid;gap:clamp(16px,2.4vw,26px);align-content:start}
+.sheet.split{grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);align-items:start}
+@media (max-width:940px){.sheet.split{grid-template-columns:1fr}}
+.sheet.narrow{max-width:760px}
+
+.card{background:var(--surface);border-radius:var(--r-lg);padding:clamp(22px,2.8vw,38px);
+  box-shadow:var(--shadow)}
+.card h3{font-size:24px;letter-spacing:.015em;margin-bottom:14px;color:var(--ink)}
+
+.passage{max-height:min(58dvh,660px);overflow:auto;font-family:var(--read);
+  font-size:16.5px;line-height:1.9;font-weight:400;color:#2D3D39;
+  scrollbar-width:thin;scrollbar-color:var(--sage-100) transparent}
+.passage::-webkit-scrollbar{width:6px}
+.passage::-webkit-scrollbar-thumb{background:var(--sage-100);border-radius:3px}
+.passage p{margin:0 0 1.15em}
+.passage[dir=ltr]{text-align:left}
+.passage table{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--sans);font-size:13.5px}
+.passage th,.passage td{border-block-end:1px solid var(--line);padding:9px 8px;text-align:center}
+.passage thead th,.passage tbody th{background:var(--sage-050);font-weight:500;color:var(--ink)}
+
+.instruction{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 16px}
+.stem{font-family:var(--read);font-weight:400;font-size:clamp(18px,2vw,21px);
+  line-height:1.75;white-space:pre-wrap;color:var(--ink)}
+.stem[dir=ltr]{text-align:left}
+
+/* answers */
+.options{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:26px 1fr;align-items:start;gap:15px;
+  width:100%;text-align:start;background:transparent;border:1px solid var(--line);
+  border-radius:var(--r-md);padding:15px 18px;cursor:pointer;font-weight:300;
+  transition:background .22s var(--ease),border-color .22s var(--ease),transform .18s var(--ease)}
+.opt:hover{background:var(--sage-050);border-color:var(--sage-100)}
+.opt:active{transform:scale(.995)}
+.opt:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.opt[aria-checked=true]{background:var(--sage-050);border-color:var(--sage)}
+.opt[dir=ltr]{text-align:left}
+.pip{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);
+  margin-block-start:3px;display:grid;place-items:center;
+  transition:border-color .22s var(--ease)}
+.pip::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--sage);
+  transform:scale(0);transition:transform .26s cubic-bezier(.34,1.56,.64,1)}
+.opt[aria-checked=true] .pip{border-color:var(--sage)}
+.opt[aria-checked=true] .pip::after{transform:scale(1)}
+.label{padding-block-start:1px;line-height:1.55}
+
+/* controls */
+.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;
+  padding:clamp(22px,3vw,34px) var(--pad)}
+.btn{border:0;border-radius:999px;background:var(--sage);color:#fff;font-weight:400;
+  padding:13px 34px;cursor:pointer;letter-spacing:.01em;
+  box-shadow:0 1px 2px rgba(36,51,48,.06),0 10px 22px -14px rgba(111,157,134,.9);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s var(--ease)}
+.btn:hover{background:#628E79;transform:translateY(-1px);box-shadow:var(--shadow-lift)}
+.btn:active{transform:translateY(0)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.btn.quiet{background:transparent;color:var(--muted);box-shadow:none}
+.btn.quiet:hover{background:var(--mist-deep);color:var(--ink);transform:none;box-shadow:none}
+.hint{font-size:12.5px;color:var(--muted)}
+kbd{font-family:var(--num);font-size:11.5px;background:var(--mist-deep);border-radius:5px;
+  padding:2px 7px;color:var(--muted)}
+
+/* full-bleed calm screens */
+.bleed{min-height:100dvh;background:var(--deep);color:#E9EFEB;
+  display:grid;place-content:center;justify-items:center;gap:24px;
+  padding:var(--pad);text-align:center}
+.bleed .tag{color:#8CA096}
+.bleed h1{color:#F1F5F2}
+.bleed .btn{background:transparent;color:#C9D6CF;box-shadow:none;border:1px solid #3B4C45}
+.bleed .btn:hover{background:#2A3A34;color:#F1F5F2;transform:none}
+.big{font-family:var(--num);font-weight:300;font-size:clamp(52px,13vw,110px);
+  line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;direction:ltr}
+
+/* the break screen breathes — four seconds in, four seconds out */
+.breath-wrap{position:relative;display:grid;place-items:center;width:min(320px,68vw);aspect-ratio:1}
+.breath{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, rgba(111,157,134,.32), rgba(111,157,134,0) 70%);
+  animation:breathe 8s ease-in-out infinite}
+.breath.b2{animation-delay:-.9s;opacity:.55}
+@keyframes breathe{0%,100%{transform:scale(.72)}50%{transform:scale(1)}}
+.breath-inner{position:relative;display:grid;gap:8px;justify-items:center}
+
+/* writing */
+textarea{width:100%;min-height:44dvh;resize:vertical;padding:24px 26px;
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
+  font-family:var(--read);font-weight:400;font-size:17px;line-height:2.05;color:var(--ink);
+  box-shadow:var(--shadow);transition:border-color .22s var(--ease)}
+textarea:focus{outline:none;border-color:var(--sage-100)}
+.meter{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:var(--muted);
+  justify-content:center;padding-block-start:4px}
+.meter b{font-family:var(--num);font-weight:400;color:var(--ink)}
+.meter .short b{color:var(--clay)}
+
+/* setup + results */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat{background:var(--surface);border-radius:var(--r-md);padding:18px 20px;box-shadow:var(--shadow)}
+.stat .k{font-size:12.5px;color:var(--muted);letter-spacing:.03em}
+.stat .v{font-family:var(--num);font-weight:300;font-size:33px;line-height:1.25;margin-block-start:2px;
+  font-variant-numeric:tabular-nums}
+.stat .v small{font-family:var(--sans);font-size:13px;color:var(--muted);font-weight:300}
+
+.drop{border:1.5px dashed var(--line);border-radius:var(--r-lg);background:var(--surface);
+  padding:34px;text-align:center;cursor:pointer;
+  transition:border-color .25s var(--ease),background .25s var(--ease),transform .25s var(--ease)}
+.drop:hover{border-color:var(--sage-100)}
+.drop.over{border-color:var(--sage);background:var(--sage-050);transform:scale(1.008)}
+.drop b{font-weight:500}
+.field{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-block-start:16px;font-size:15px}
+select,input[type=text]{padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface);font-weight:300}
+select:focus,input:focus{outline:none;border-color:var(--sage-100)}
+.notice{border-radius:var(--r-md);background:var(--sage-050);padding:16px 20px;font-size:14.5px;
+  line-height:1.6;border-inline-start:2px solid var(--sage)}
+.notice.warn{background:#FAF0EE;border-inline-start-color:var(--clay)}
+.notice ul{margin:8px 0 0;padding-inline-start:20px}
+
+table.review{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow)}
+table.review th,table.review td{border-block-end:1px solid var(--line);padding:12px 14px;text-align:start}
+table.review tr:last-child td{border-block-end:0}
+table.review th{font-size:12px;color:var(--muted);font-weight:400;letter-spacing:.03em}
+td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-inline-end:9px}
+.dot.ok{background:var(--sage)} .dot.no{background:var(--clay)} .dot.na{background:var(--line)}
+
+/* motion */
+.options .opt{animation:rise .4s var(--ease) both}
+.options .opt:nth-child(1){animation-delay:.10s} .options .opt:nth-child(2){animation-delay:.16s}
+.options .opt:nth-child(3){animation-delay:.22s} .options .opt:nth-child(4){animation-delay:.28s}
+.enter{animation:rise .38s var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stagger>*{animation:rise .42s var(--ease) both}
+.stagger>*:nth-child(1){animation-delay:.02s} .stagger>*:nth-child(2){animation-delay:.07s}
+.stagger>*:nth-child(3){animation-delay:.12s} .stagger>*:nth-child(4){animation-delay:.17s}
+.stagger>*:nth-child(5){animation-delay:.22s} .stagger>*:nth-child(6){animation-delay:.27s}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<div id="rail"><i></i></div>
+<div id="dial" class="hidden">
+  <svg viewBox="0 0 76 76"><circle class="track" cx="38" cy="38" r="33"/><circle class="arc" id="arc" cx="38" cy="38" r="33"/></svg>
+  <b id="clock">0:00</b>
+</div>
+<main id="app"></main>
+
+<script>
+/* ===== mapam-core.js (injected at build time — edit src/mapam-core.js) ===== */
+/* ============================================================================
+ * mapam-core.js — turn any psychometric item bank into a מפע"ם (MAPAM) run.
+ *
+ * Works in the browser (window.MapamCore) and in Node (module.exports).
+ * No dependencies.
+ *
+ * Pipeline:  bank (JSON)  ->  validateBank  ->  buildTest  ->  steps[]  ->  runner
+ * ========================================================================== */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.MapamCore = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* --------------------------------------------------------------------------
+   * 1. The MAPAM rulebook.
+   *    Everything the format dictates lives here and nowhere else. Change a
+   *    number here and the whole system follows.
+   * ------------------------------------------------------------------------ */
+
+  var RULES = {
+    // Seconds allotted per item type. Source: NITE MAPAM time-per-question table.
+    time: {
+      verbal: {
+        analogy:             90,   // אנלוגיה                        1.5 דק'
+        reading_passage:     420,  // קטע קריאה (זמן קריאה)            7 דק'
+        reading_question:    240,  // שאלה על קטע קריאה                4 דק'
+        logic:               240,  // שאלת הבנה והסקה                  4 דק'
+        sentence_completion: 180   // השלמת משפטים                    3 דק'
+      },
+      quantitative: {
+        problem:             240,  // שאלות ובעיות                    4 דק'
+        figure:              300,  // עיון בתרשים/טבלה                5 דק'
+        figure_question:     240   // שאלת הסקה מתרשים/טבלה            4 דק'
+      },
+      english: {
+        sentence_completion: 120,  // השלמת משפטים                    2 דק'
+        reading_passage:     420,  // קטע קריאה                       7 דק'
+        reading_question:    240,  // שאלה על קטע קריאה                4 דק'
+        restatement:         240   // ניסוח מחדש                      4 דק'
+      }
+    },
+
+    // Writing task. 30 is standard; the longer values are approved accommodations.
+    writing: { defaultMinutes: 30, allowedMinutes: [30, 35, 40, 45], minLines: 25 },
+
+    // Breaks.
+    breaks: {
+      majorSeconds: 300,   // 5 min — after the writing task, after verbal, after quantitative
+      microSeconds: 150,   // 2.5 min — between chapters inside verbal / quantitative / english
+      skippable: true      // "נבחנים המעוניינים לקצר את ההפסקה יוכלו לעשות זאת"
+    },
+
+    // Behaviour of the computerised format.
+    behaviour: {
+      allowBack: false,          // one shot per question, no returning
+      allowEarlyAdvance: true,   // answering early lets you move on
+      autoAdvanceOnTimeout: true,
+      keepStimulusVisible: true  // the passage/table stays on screen during its questions
+    },
+
+    // Order of the domains in a sitting.
+    domainOrder: ['writing', 'verbal', 'quantitative', 'english'],
+
+    // A sitting is capped: "לא תמיד אפשר להניח להיבחן במשך יותר מחמש שעות וחצי".
+    session: { maxSeconds: 5.5 * 3600, typicalSeconds: 3.5 * 3600 }
+  };
+
+  /* Blueprint: how many items of each type a MAPAM sitting draws from the bank.
+   * `reading_passage` / `figure` are counts of stimuli; `*_question` are the
+   * total questions drawn across them. `chapters` is how many timed chapters
+   * the domain is split into (micro-breaks go between them).
+   *
+   * These counts are calibrated so the whole sitting lands on the 5.5-hour
+   * ceiling. Tune them per institution and the rest of the system follows. */
+  var BLUEPRINTS = {
+    standard: {
+      verbal:       { chapters: 2, analogy: 6, sentence_completion: 5, logic: 7, reading_passage: 2, reading_question: 6 },
+      quantitative: { chapters: 2, problem: 15, figure: 2, figure_question: 5 },
+      english:      { chapters: 2, sentence_completion: 10, restatement: 7, reading_passage: 2, reading_question: 7 }
+    },
+    // Half-length dry run: same proportions, roughly half the clock.
+    half: {
+      verbal:       { chapters: 1, analogy: 3, sentence_completion: 3, logic: 4, reading_passage: 1, reading_question: 3 },
+      quantitative: { chapters: 1, problem: 8, figure: 1, figure_question: 3 },
+      english:      { chapters: 1, sentence_completion: 5, restatement: 4, reading_passage: 1, reading_question: 4 }
+    },
+    // Take everything in the bank, in bank order. No sampling.
+    full: null
+  };
+
+  // Order the item types appear in within a chapter, per domain.
+  var TYPE_ORDER = {
+    verbal:       ['analogy', 'sentence_completion', 'logic', 'reading_passage'],
+    quantitative: ['problem', 'figure'],
+    english:      ['sentence_completion', 'restatement', 'reading_passage']
+  };
+
+  // Which item types hang off a stimulus (passage / figure / table).
+  var STIMULUS_TYPES = {
+    reading_passage: { domains: ['verbal', 'english'], childType: 'reading_question' },
+    figure:          { domains: ['quantitative'],      childType: 'figure_question' }
+  };
+
+  // Human labels, for the UI and for reports.
+  var LABELS = {
+    domain: { writing: 'מטלת כתיבה', verbal: 'חשיבה מילולית', quantitative: 'חשיבה כמותית', english: 'אנגלית' },
+    type: {
+      analogy: 'אנלוגיה',
+      reading_passage: 'קטע קריאה',
+      reading_question: 'שאלה על קטע קריאה',
+      logic: 'שאלת הבנה והסקה',
+      sentence_completion: 'השלמת משפטים',
+      problem: 'שאלות ובעיות',
+      figure: 'עיון בתרשים/טבלה',
+      figure_question: 'שאלת הסקה מתרשים/טבלה',
+      restatement: 'ניסוח מחדש'
+    }
+  };
+
+  /* --------------------------------------------------------------------------
+   * 2. Validation — say exactly what is wrong and where.
+   * ------------------------------------------------------------------------ */
+
+  function validateBank(bank) {
+    var problems = [];
+    var at = function (where, msg) { problems.push({ where: where, message: msg }); };
+
+    if (!bank || typeof bank !== 'object') { at('bank', 'הבנק ריק או אינו אובייקט.'); return problems; }
+    if (!Array.isArray(bank.sections) || !bank.sections.length) at('bank.sections', 'חסרים פרקים.');
+
+    if (bank.writingTask) {
+      var m = bank.writingTask.minutes;
+      if (m != null && RULES.writing.allowedMinutes.indexOf(m) === -1)
+        at('writingTask.minutes', 'זמן כתיבה ' + m + ' אינו אחד מ־' + RULES.writing.allowedMinutes.join('/') + '.');
+      if (!bank.writingTask.prompt) at('writingTask.prompt', 'חסרה מטלת הכתיבה.');
+    }
+
+    var seenIds = Object.create(null);
+    (bank.sections || []).forEach(function (sec, si) {
+      var where = 'sections[' + si + ']' + (sec.id ? ' (' + sec.id + ')' : '');
+      if (!sec.domain || !RULES.time[sec.domain]) at(where, 'domain חייב להיות verbal / quantitative / english.');
+      if (!Array.isArray(sec.items) || !sec.items.length) at(where, 'לפרק אין שאלות.');
+
+      var stimIds = Object.create(null);
+      (sec.stimuli || []).forEach(function (st, ti) {
+        if (!st.id) at(where + '.stimuli[' + ti + ']', 'לגירוי חסר id.');
+        else if (stimIds[st.id]) at(where + '.stimuli[' + ti + ']', 'id כפול: ' + st.id + '.');
+        stimIds[st.id] = true;
+        var kind = st.kind || 'reading_passage';
+        if (!STIMULUS_TYPES[kind]) at(where + '.stimuli[' + ti + ']', 'kind לא מוכר: ' + kind + '.');
+        else if (STIMULUS_TYPES[kind].domains.indexOf(sec.domain) === -1)
+          at(where + '.stimuli[' + ti + ']', kind + ' לא קיים בתחום ' + sec.domain + '.');
+        if (!st.body && !st.html && !st.image) at(where + '.stimuli[' + ti + ']', 'לגירוי אין תוכן (body / html / image).');
+      });
+
+      (sec.items || []).forEach(function (it, ii) {
+        var iw = where + '.items[' + ii + ']' + (it.id ? ' (' + it.id + ')' : '');
+        if (!it.id) at(iw, 'לשאלה חסר id.');
+        else if (seenIds[it.id]) at(iw, 'id כפול בכל הבחינה: ' + it.id + '.');
+        seenIds[it.id] = true;
+
+        if (!it.type) at(iw, 'לשאלה חסר type.');
+        else if (!RULES.time[sec.domain] || RULES.time[sec.domain][it.type] == null)
+          at(iw, 'type "' + it.type + '" אינו קיים בתחום ' + sec.domain + '.');
+
+        if (!it.stem) at(iw, 'חסר גוף שאלה (stem).');
+        if (!Array.isArray(it.options) || it.options.length !== 4) at(iw, 'צריך בדיוק 4 מסיחים.');
+        if (!(it.answer >= 1 && it.answer <= 4)) at(iw, 'answer חייב להיות 1–4.');
+
+        var needsStim = it.type === 'reading_question' || it.type === 'figure_question';
+        if (needsStim && !it.stimulusId) at(iw, 'שאלה מסוג ' + it.type + ' חייבת stimulusId.');
+        if (it.stimulusId && !stimIds[it.stimulusId]) at(iw, 'stimulusId לא קיים בפרק: ' + it.stimulusId + '.');
+      });
+    });
+
+    return problems;
+  }
+
+  /* --------------------------------------------------------------------------
+   * 3. Build — bank -> flat, timed, ordered list of steps.
+   * ------------------------------------------------------------------------ */
+
+  /* A "group" is the smallest unit that must stay intact: either one standalone
+   * question, or one stimulus plus the questions hanging off it. */
+  function poolGroups(bank, domain, rules) {
+    var groups = [];
+    (bank.sections || []).filter(function (s) { return s.domain === domain; }).forEach(function (sec) {
+      var stim = {}, byStim = {};
+      (sec.stimuli || []).forEach(function (st) {
+        stim[st.id] = st;
+        byStim[st.id] = { kind: 'stimulus', type: st.kind || 'reading_passage', stimulus: st, items: [], sectionId: sec.id };
+      });
+      (sec.items || []).forEach(function (it) {
+        if (it.stimulusId && byStim[it.stimulusId]) byStim[it.stimulusId].items.push(it);
+        else groups.push({ kind: 'single', type: it.type, stimulus: null, items: [it], sectionId: sec.id });
+      });
+      Object.keys(byStim).forEach(function (id) { if (byStim[id].items.length) groups.push(byStim[id]); });
+    });
+    groups.forEach(function (g) { g.seconds = groupSeconds(g, domain, rules); });
+    return groups;
+  }
+
+  function groupSeconds(g, domain, rules) {
+    var t = rules.time[domain], total = 0;
+    if (g.kind === 'stimulus') total += (g.stimulus.seconds || t[g.type] || 0);
+    g.items.forEach(function (it) { total += it.seconds || t[it.type] || 0; });
+    return total;
+  }
+
+  /* Deterministic PRNG so a given seed always yields the same sitting. */
+  function rngFrom(seed) {
+    var h = 2166136261 >>> 0, s = String(seed == null ? 'mapam' : seed);
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return function () { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
+  }
+  function pick(arr, n, rng) {
+    if (n >= arr.length) return arr.slice();
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a.slice(0, n);
+  }
+
+  /* Blueprint -> the groups this sitting will actually use. */
+  function selectGroups(groups, bp, domain, rng, notes) {
+    if (!bp) return groups;
+    var chosen = [], order = TYPE_ORDER[domain] || [];
+
+    order.forEach(function (type) {
+      var want = bp[type] || 0;
+      if (!want) return;
+      var stimSpec = STIMULUS_TYPES[type];
+      var avail = groups.filter(function (g) { return g.type === type; });
+
+      if (!stimSpec) {                                   // standalone questions
+        var got = pick(avail, want, rng);
+        if (got.length < want) notes.push(domain + ': ביקשת ' + want + ' × ' + (LABELS.type[type] || type) + ', בבנק יש ' + got.length + '.');
+        chosen = chosen.concat(got);
+        return;
+      }
+
+      var qWant = bp[stimSpec.childType] || 0;           // stimulus + its questions
+      var stims = pick(avail, want, rng);
+      if (stims.length < want) notes.push(domain + ': ביקשת ' + want + ' × ' + (LABELS.type[type] || type) + ', בבנק יש ' + stims.length + '.');
+      if (!stims.length) return;
+
+      var per = Math.floor(qWant / stims.length), extra = qWant % stims.length, drawn = 0;
+      stims.forEach(function (g, i) {
+        var take = per + (i < extra ? 1 : 0);
+        var kept = pick(g.items, take, rng);
+        drawn += kept.length;
+        chosen.push({ kind: 'stimulus', type: g.type, stimulus: g.stimulus, items: kept, sectionId: g.sectionId });
+      });
+      if (drawn < qWant) notes.push(domain + ': ביקשת ' + qWant + ' שאלות על ' + (LABELS.type[type] || type) + ', בבנק יש ' + drawn + '.');
+    });
+
+    return chosen;
+  }
+
+  /* Deal groups into n chapters, round-robin per type, then order each chapter
+   * by the domain's canonical type order — so every chapter looks like a real
+   * chapter rather than "all the analogies, then all the passages". */
+  function intoChapters(groups, n, domain) {
+    n = Math.max(1, n || 1);
+    var chapters = [], byType = {};
+    for (var i = 0; i < n; i++) chapters.push([]);
+    groups.forEach(function (g) { (byType[g.type] = byType[g.type] || []).push(g); });
+    Object.keys(byType).forEach(function (type) {
+      byType[type].forEach(function (g, i) { chapters[i % n].push(g); });
+    });
+    var order = TYPE_ORDER[domain] || [];
+    chapters.forEach(function (ch) {
+      ch.forEach(function (g, i) { g._i = i; });
+      ch.sort(function (a, b) {
+        var d = order.indexOf(a.type) - order.indexOf(b.type);
+        return d !== 0 ? d : a._i - b._i;
+      });
+    });
+    return chapters.filter(function (ch) { return ch.length; });
+  }
+
+  function buildTest(bank, options) {
+    var opt = options || {};
+    var rules = deepMerge(clone(RULES), opt.rules || {});
+    var bp = opt.blueprint === undefined ? null
+           : (typeof opt.blueprint === 'string' ? BLUEPRINTS[opt.blueprint] : opt.blueprint);
+    var rng = rngFrom(opt.seed);
+    var notes = [], steps = [], order = 0;
+
+    function push(step) { step.index = order++; steps.push(step); return step; }
+
+    // -- writing task -------------------------------------------------------
+    if (bank.writingTask && opt.includeWriting !== false) {
+      var minutes = opt.writingMinutes || bank.writingTask.minutes || rules.writing.defaultMinutes;
+      push({
+        kind: 'writing', domain: 'writing', seconds: minutes * 60,
+        prompt: bank.writingTask.prompt,
+        intro: bank.writingTask.intro || null,
+        minLines: bank.writingTask.minLines || rules.writing.minLines
+      });
+      push({ kind: 'break', seconds: rules.breaks.majorSeconds, label: 'הפסקה', after: 'writing' });
+    }
+
+    // -- multiple-choice domains -------------------------------------------
+    var domains = rules.domainOrder.filter(function (d) {
+      return d !== 'writing' && (bank.sections || []).some(function (s) { return s.domain === d; });
+    });
+
+    domains.forEach(function (domain, di) {
+      var pool = poolGroups(bank, domain, rules);
+      var chosen = selectGroups(pool, bp && bp[domain], domain, rng, notes);
+      var chapters = intoChapters(chosen, bp && bp[domain] ? bp[domain].chapters : (opt.chapters || 1), domain);
+
+      chapters.forEach(function (ch, ci) {
+        if (ci > 0) push({ kind: 'break', seconds: rules.breaks.microSeconds, label: 'הפסקה', after: 'chapter' });
+        var sectionId = domain + '-' + (ci + 1);
+        var itemCount = ch.reduce(function (n, g) { return n + g.items.length; }, 0);
+
+        push({
+          kind: 'section-intro', domain: domain, sectionId: sectionId,
+          title: LABELS.domain[domain] + (chapters.length > 1 ? ' — פרק ' + ['ראשון','שני','שלישי','רביעי'][ci] : ''),
+          subtitle: chapterSubtitle(ch),
+          itemCount: itemCount,
+          seconds: opt.introSeconds != null ? opt.introSeconds : 30
+        });
+
+        ch.forEach(function (g) {
+          if (g.kind === 'stimulus') {
+            var st = g.stimulus, kind = g.type;
+            push({
+              kind: 'stimulus', domain: domain, sectionId: sectionId,
+              stimulusId: st.id, stimulusKind: kind,
+              seconds: st.seconds || rules.time[domain][kind],
+              title: st.title || LABELS.type[kind],
+              body: st.body || null, html: st.html || null, image: st.image || null, dir: st.dir || null
+            });
+          }
+          g.items.forEach(function (it) {
+            push({
+              kind: 'item', domain: domain, sectionId: sectionId,
+              itemId: it.id, type: it.type,
+              seconds: it.seconds || rules.time[domain][it.type],
+              stem: it.stem, instruction: it.instruction || null,
+              options: it.options, answer: it.answer,
+              stimulusId: g.stimulus ? g.stimulus.id : null,
+              image: it.image || null, dir: it.dir || null,
+              scored: it.scored !== false      // "הפריט אינו נכלל בחישוב הציון"
+            });
+          });
+        });
+      });
+
+      if (di < domains.length - 1)
+        push({ kind: 'break', seconds: rules.breaks.majorSeconds, label: 'הפסקה', after: 'domain' });
+    });
+
+    push({ kind: 'end' });
+
+    var summary = summarize(steps);
+    summary.maxSeconds = rules.session.maxSeconds;
+    summary.overBudget = summary.totalSeconds > rules.session.maxSeconds;
+    summary.notes = notes;
+
+    return { meta: clone(bank.meta || {}), rules: rules, blueprint: bp, seed: opt.seed || null, steps: steps, summary: summary };
+  }
+
+  function chapterSubtitle(ch) {
+    var seen = [], out = [];
+    ch.forEach(function (g) {
+      g.items.forEach(function (it) {
+        if (seen.indexOf(it.type) === -1) { seen.push(it.type); out.push(LABELS.type[it.type] || it.type); }
+      });
+    });
+    return out.join(' · ');
+  }
+
+  function summarize(steps) {
+    var out = { totalSeconds: 0, breakSeconds: 0, byDomain: {}, counts: { items: 0, stimuli: 0, breaks: 0 } };
+    steps.forEach(function (s) {
+      var sec = s.seconds || 0;
+      out.totalSeconds += sec;
+      if (s.kind === 'break') { out.breakSeconds += sec; out.counts.breaks++; return; }
+      if (s.kind === 'item') out.counts.items++;
+      if (s.kind === 'stimulus') out.counts.stimuli++;
+      if (!s.domain) return;
+      var d = out.byDomain[s.domain] || (out.byDomain[s.domain] = { seconds: 0, items: 0 });
+      d.seconds += sec;
+      if (s.kind === 'item') d.items++;
+    });
+    return out;
+  }
+
+  /* --------------------------------------------------------------------------
+   * 4. Scoring — raw -> uniform scale -> weighted -> estimated general score.
+   *    Tables are NITE's published conversion tables; swap them per sitting.
+   * ------------------------------------------------------------------------ */
+
+  // index = raw score; value = uniform score (null = raw impossible in that domain)
+  var SCALE = {
+    verbal:       [50,51,53,55,57,59,61,63,65,67,69,71,73,76,78,80,82,85,87,90,92,94,97,99,102,104,106,109,111,114,116,118,121,123,126,128,130,133,135,138,140,142,143,145,146,148,150],
+    quantitative: [50,52,54,56,58,61,64,67,70,73,76,78,81,83,86,88,90,93,95,98,100,102,104,107,109,111,114,116,119,121,124,126,129,131,134,136,138,141,144,147,150],
+    english:      [50,52,54,56,58,60,62,65,68,71,74,76,78,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,112,114,116,118,120,123,125,127,129,131,134,136,138,141,144,147,150]
+  };
+
+  // weighted uniform score -> [minGeneral, maxGeneral], for 200–800 estimation
+  var GENERAL_BANDS = [
+    [50, 50, 200, 200], [51, 55, 221, 248], [56, 60, 249, 276], [61, 65, 277, 304],
+    [66, 70, 305, 333], [71, 75, 334, 361], [76, 80, 362, 389], [81, 85, 390, 418],
+    [86, 90, 419, 446], [91, 95, 447, 474], [96, 100, 475, 503], [101, 105, 504, 531],
+    [106, 110, 532, 559], [111, 115, 560, 587], [116, 120, 588, 616], [121, 125, 617, 644],
+    [126, 130, 645, 672], [131, 135, 673, 701], [136, 140, 702, 729], [141, 145, 730, 761],
+    [146, 149, 762, 795], [150, 150, 800, 800]
+  ];
+
+  function scale(domain, raw) {
+    var t = SCALE[domain];
+    if (!t) return null;
+    return t[Math.max(0, Math.min(t.length - 1, raw))];
+  }
+
+  /* The published table is banded on whole numbers, but a weighted score is
+   * fractional. Read each band as the continuous interval [lo, hi+1) and
+   * interpolate inside it, so nothing falls through the cracks. */
+  function generalScore(weighted) {
+    var w = Math.max(50, Math.min(150, weighted));
+    for (var i = 0; i < GENERAL_BANDS.length; i++) {
+      var b = GENERAL_BANDS[i];
+      if (w > b[1]) continue;
+      if (b[0] === b[1]) return b[2];
+      var t = Math.max(0, Math.min(1, (w - b[0]) / (b[1] + 1 - b[0])));
+      return Math.round(b[2] + t * (b[3] - b[2]));
+    }
+    return GENERAL_BANDS[GENERAL_BANDS.length - 1][3];
+  }
+
+  /**
+   * responses: { itemId: 1..4 | null }
+   * Returns raw + uniform + weighted + estimated general scores.
+   */
+  function score(test, responses) {
+    var raw = { verbal: 0, quantitative: 0, english: 0 };
+    var seen = { verbal: 0, quantitative: 0, english: 0 };
+    var detail = [];
+
+    test.steps.forEach(function (s) {
+      if (s.kind !== 'item') return;
+      var given = responses[s.itemId] != null ? responses[s.itemId] : null;
+      var correct = given === s.answer;
+      if (s.scored) { seen[s.domain]++; if (correct) raw[s.domain]++; }
+      detail.push({
+        itemId: s.itemId, domain: s.domain, type: s.type,
+        given: given, answer: s.answer, correct: correct, scored: s.scored
+      });
+    });
+
+    var V = scale('verbal', raw.verbal),
+        Q = scale('quantitative', raw.quantitative),
+        E = scale('english', raw.english);
+
+    var composites = {
+      multi:            (2 * V + 2 * Q + E) / 5,
+      verbalEmphasis:   (3 * V + Q + E) / 5,
+      quantEmphasis:    (3 * Q + V + E) / 5
+    };
+
+    return {
+      raw: raw, attempted: seen, uniform: { verbal: V, quantitative: Q, english: E },
+      composites: composites,
+      general: {
+        multi:          generalScore(composites.multi),
+        verbalEmphasis: generalScore(composites.verbalEmphasis),
+        quantEmphasis:  generalScore(composites.quantEmphasis)
+      },
+      detail: detail
+    };
+  }
+
+  /* ------------------------------------------------------------------------ */
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function deepMerge(a, b) {
+    Object.keys(b || {}).forEach(function (k) {
+      if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) a[k] = deepMerge(a[k] || {}, b[k]);
+      else a[k] = b[k];
+    });
+    return a;
+  }
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* What does the bank actually contain? Feeds the blueprint UI and the
+   * "you asked for 8 but only have 5" warnings. */
+  function inventory(bank) {
+    var inv = {};
+    (bank.sections || []).forEach(function (sec) {
+      var d = inv[sec.domain] = inv[sec.domain] || { types: {}, stimuli: {} };
+      (sec.stimuli || []).forEach(function (st) {
+        var k = st.kind || 'reading_passage';
+        d.stimuli[k] = (d.stimuli[k] || 0) + 1;
+      });
+      (sec.items || []).forEach(function (it) { d.types[it.type] = (d.types[it.type] || 0) + 1; });
+    });
+    return inv;
+  }
+
+  return {
+    RULES: RULES, LABELS: LABELS, STIMULUS_TYPES: STIMULUS_TYPES,
+    BLUEPRINTS: BLUEPRINTS, TYPE_ORDER: TYPE_ORDER,
+    SCALE: SCALE, GENERAL_BANDS: GENERAL_BANDS,
+    validateBank: validateBank, buildTest: buildTest, summarize: summarize,
+    inventory: inventory, score: score, scale: scale, generalScore: generalScore, fmt: fmt
+  };
+});
+
+</script>
+
+<script>
+const EXAMPLE_BANK = {"meta":{"id":"nite-winter-2023-excerpt","title":"בחינה פסיכומטרית להתנסות — מועד חורף 2023","language":"he","note":"קטע קצר מן המבחן המלא, לצורך הדגמת המבנה. השלימו את שאר הפריטים באותו פורמט."},"writingTask":{"minutes":30,"minLines":25,"intro":"קראו בעיון את המטלה וכתבו חיבור. אורך החיבור הנדרש — 25 שורות לפחות. כתבו בעברית בלבד, בסגנון ההולם כתיבה עיונית, והקפידו על ארגון הכתוב ועל לשון תקינה ובהירה.","prompt":"בשנים האחרונות חלה עלייה ניכרת במספר רוכבי האופניים בערים הגדולות. החוק אוסר על רוכבי אופניים לרכוב על המדרכות מחשש שיפגעו בהולכי רגל. ואולם, רוכבי האופניים טוענים שהרכיבה על הכביש מסוכנת מאוד, והם דורשים כי בכל מקום שאין בו שביל ייעודי לאופניים תותר הרכיבה על המדרכה.\n\nלדעתכם, האם יש להתיר לרוכבי האופניים בערים הגדולות לרכוב על המדרכות במקומות שאי אפשר לסלול בהם שבילים ייעודיים לאופניים? נמקו."},"sections":[{"id":"v1","domain":"verbal","title":"חשיבה מילולית — פרק ראשון","subtitle":"אנלוגיות, שאלות הבנה והסקה, שאלות על קטע קריאה","stimuli":[{"id":"v1p1","kind":"reading_passage","title":"קטע קריאה — קטשופ","body":"כאשר שכרה חברת המזון קמפבל בשנת 1986 את האוורד מוסקוביץ' כדי לפתח עבורה רוטב עגבניות לפסטה, רווחה הסברה שלכל מאכל יש מתכון מושלם, המשלב באופן כה מוצלח בין מרכיביו, עד שכל מי שיטעם ממנו יתאהב בו מייד. מוסקוביץ', דוקטור לפסיכופיזיקה, ניגש למטלה בעזרת ארגז כלים מדעי: הוא הרכיב ארבעים וחמש גרסאות של רוטב עגבניות, וביקש מקבוצות של טועמים לדרג אותן. הממצאים שהתקבלו נראו מבלבלים: במקום להצביע כמצופה על רוטב אחד ויחיד האהוב על כולם, הם לא הראו כל דפוס עקיב. אלא שניתוח מדוקדק העלה מסקנה מורכבת יותר: הטועמים נחלקו לקבוצות שלכל אחת הרוטב המושלם שלה, וככל שגרסה מסוימת מצאה חן יותר בעיני חברי קבוצה אחת, כך היא נשאה חן פחות בעיני חברי הקבוצות האחרות. בכל הנוגע למזון, טען אפוא מוסקוביץ', הרדיפה אחר האוניברסלי מיותרת, מפני שהוא כלל אינו קיים.\n\nטענתו של מוסקוביץ' אומנם זכתה לחיזוק מניסויים במאכלים אחרים וחוללה שינוי דרמטי בעולם המזון התעשייתי, אך מוצר מזון אחד מכשיל אותה שוב ושוב. למרות ניסיונות רבים של חברות מזון לייצר קטשופ מסוגים שונים, רובנו עדיין מעדיפים קטשופ הדומה מאוד לזה שהופיע בראשית המאה ה־20. בשלהי המאה ה־19 טען משרד החקלאות האמריקני שבנזואט, החומר המשמר בקטשופ של אותם ימים, מסוכן לבריאות. בעקבות זאת התפלגו יצרני הקטשופ לשניים: האגף השמרני טען שאין כל סכנה בצריכת בנזואט בכמויות קטנות, והמשיך לייצר קטשופ כפי שהיה נהוג עד אז, מעגבניות בוסר ומכמות קטנה בלבד של חומץ, שעשוהו דליל ומימי. מנגד ניצבו אלו שטענו כי מצאו דרך להחליף את הבנזואט: הם הגדילו מאוד את כמות החומץ בקטשופ, במידה כזו שיוכל לשמש חומר משמר, ואגב כך גם עברו להשתמש בעגבניות בשלות, והתוצאה הייתה רוטב סמיך ועשיר בטעמים. ההימור השתלם: למרות מחירו הזול, נעלם קטשופ הבנזואט מן העולם."}],"items":[{"id":"v1-1","type":"analogy","instruction":"מצאו את היחס בין המשמעויות של שתי המילים המודגשות, ובחרו את זוג המילים שהיחס ביניהן דומה לו ביותר.","stem":"עוגן : להפליג —","options":["תריס : להחשיך","קשר : להתיר","מפתח : לנעול","פקק : למזוג"],"answer":4},{"id":"v1-2","type":"analogy","stem":"מגהץ : חָלק —","options":["סרגל : ישר","כרית : רך","סולם : גבוה","מגבת : יבש"],"answer":4},{"id":"v1-7","type":"logic","stem":"יום שישי החל ב־13 בחודש נחשב בעיני רבים ליום מבשר רעות. מחקר שנערך בהולנד קובע שיום שישי כזה דווקא בטוח יותר מימי שישי אחרים: יש בו פחות תאונות, שרפות וגנבות. החוקרים הסבירו את הממצאים בכך שרבים מההולנדים מאמינים שיום שישי כזה מועד לאסונות, ונוטים להיות זהירים בו יותר ולמעט ביציאה מבתיהם.\n\nאיזו מהתופעות הבאות היא הדומה ביותר לתופעה המתוארת לעיל?","options":["סקי הוא ענף ספורט מסוכן, הגורם לפציעות רבות בקרב גולשים לא מקצועיים, אך גולשי סקי מקצועיים נפצעים לעיתים רחוקות בלבד","סטודנטים נוטים להצליח יותר במבחנים שהם חוששים שייכשלו בהם, מכיוון שהם משקיעים זמן רב יותר בלימוד לקראתם","אנשים החוששים מכלבים וניגשים אליהם בזהירות יתרה מעוררים את חשדם של הכלבים ובכך גורמים להם להיות תוקפניים יותר כלפיהם","הגדלת מספר השוטרים ברחובות מסייעת בצמצום הפשיעה בשעות הלילה יותר משהיא מסייעת בצמצום הפשיעה בשעות היום"],"answer":2},{"id":"v1-10","type":"sentence_completion","instruction":"בחרו את התשובה המתאימה ביותר להשלמת החסר.","stem":"______ להפעיל לחץ על עובד כדי ש______ החלטתו, אם החליט לפרוש מתפקידו; זאת ______ שארגון שאינו ______, נידון מראש לכישלון.","options":["יש / יממש את / מכיוון / עושה כל שביכולתו כדי להימנע מתחלופת עובדים","יש / ישנה את / משום / שם לעצמו כיעד לצמצם ככל האפשר את תחלופת העובדים","אין / יחזור בו מ־ / אף על פי / מאפשר חופש בחירה לעובדיו","יש / יממש את / אף על פי / מעסיק אך ורק עובדים המעוניינים בתפקידם"],"answer":2},{"id":"v1-18","type":"reading_question","stimulusId":"v1p1","stem":"רועי ומיכל שמעו על הטענה של מוסקוביץ' וטענו שהעדפותיהם בנוגע לסלט יכולות להיחשב עדות שתחזק אותה. איזו מן האפשרויות הבאות היא המתאימה ביותר לתיאור העדפותיהם?","options":["רועי נוהג לאכול סלט עם עגבניות שרי, ואילו מיכל מעדיפה להכין סלט שאינו מכיל עגבניות כאלו, בשל מחירן היקר","רועי אוהב סלט המכיל גזר, ואילו מיכל טוענת שטעמו המתוק פוגם בטעמו החמצמץ של הסלט החביב עליה","רועי ומיכל מסכימים שניהם שהוספת שמיר לסלט תפגע בטעמו, אלא אם כן יש בסלט גם כוסברה","רועי אוהב סלט המכיל אגוזים, ומיכל, שהייתה בתחילה ספקנית, משוכנעת מאז שטעמה ממנו שהאגוזים הם תוספת הכרחית לכל סלט"],"answer":2},{"id":"v1-19","type":"reading_question","stimulusId":"v1p1","stem":"איזו מן האפשרויות הבאות עולה מן הפסקה השנייה בנוגע לטענתו של משרד החקלאות האמריקני כי הבנזואט מסוכן לבריאות?","options":["הטענה נמצאה נכונה","הטענה הביאה לפיתוחו של הקטשופ המוכר לנו כיום","הטענה הובילה לאיסור על השימוש בבנזואט כחומר משמר","הטענה הועלתה עוד בטרם הומצא הקטשופ"],"answer":2}]},{"id":"q2","domain":"quantitative","title":"חשיבה כמותית — פרק שני","subtitle":"שאלות ובעיות, הסקה מטבלה","stimuli":[{"id":"q2t1","kind":"figure","title":"הסקה מטבלה — מטע שזיפים","body":"בטבלה מוצגים נתונים שנרשמו בסוף שנת 2020 על פירות הנגועים במזיקים במטע שזיפים. עצי השזיף נטועים ב־7 חלקות (א–ז). בכל טור נטועים 4 עצים, אחד מכל זן: A, B, C, D. עבור כל זן רשום אחוז הפירות הנגועים בכל חלקה. הניחו שלכל עץ מספר שווה של שזיפים.","html":"<table><thead><tr><th>שם החלקה</th><th>א</th><th>ב</th><th>ג</th><th>ד</th><th>ה</th><th>ו</th><th>ז</th></tr></thead><tbody><tr><th>מספר טורי עצים</th><td>5</td><td>3</td><td>7</td><td>4</td><td>5</td><td>4</td><td>2</td></tr><tr><th>זן A</th><td>10</td><td>25</td><td>33⅓</td><td>20</td><td>80</td><td>20</td><td>5</td></tr><tr><th>זן B</th><td>50</td><td>25</td><td>50</td><td>25</td><td>66⅔</td><td>10</td><td>10</td></tr><tr><th>זן C</th><td>75</td><td>50</td><td>66⅔</td><td>50</td><td>50</td><td>25</td><td>25</td></tr><tr><th>זן D</th><td>25</td><td>80</td><td>70</td><td>25</td><td>33⅓</td><td>15</td><td>20</td></tr><tr><th>שנת הנטיעה</th><td>1993</td><td>1995</td><td>1998</td><td>2005</td><td>2008</td><td>2012</td><td>2017</td></tr></tbody></table>"}],"items":[{"id":"q2-7","type":"problem","stem":"סדרת טלוויזיה מחולקת לכמה עונות, ובכל עונה 13 פרקים. לאיזו עונה שייך הפרק ה־120 בסדרה?","options":["9","10","11","12"],"answer":2},{"id":"q2-8","type":"problem","stem":"כמה מחלקים זוגיים יש למספר 40 (לא כולל 40 עצמו)?","options":["5","8","3","4"],"answer":1},{"id":"q2-16","type":"figure_question","stimulusId":"q2t1","stem":"בבחירה אקראית, הסיכוי הגבוה ביותר למצוא שזיף שאינו נגוע הוא בבחירה מתוך השזיפים מזן ______ בחלקה ______.","options":["A ; ז","B ; ד","C ; ה","D ; ו"],"answer":1},{"id":"q2-17","type":"figure_question","stimulusId":"q2t1","stem":"בסוף שנת 2020 הניבו עצי השזיף בחלקה ה בסך הכול 600 שזיפים מזן מסוים. 400 מתוכם היו נגועים. באיזה זן שזיפים מדובר?","options":["A","B","C","D"],"answer":2}]},{"id":"e1","domain":"english","title":"English — Section One","subtitle":"Sentence Completions, Restatements, Reading Comprehension","stimuli":[{"id":"e1p1","kind":"reading_passage","title":"Text I — Unusual Post Offices","body":"In today's world of fast, efficient communication such as email and WhatsApp, why would anyone bother with stamps and envelopes? Indeed, \"snail mail\" — as the regular postal system is often called — may eventually become obsolete. Some post offices have radically streamlined the services they provide or have closed altogether. However, a few are flourishing — thanks to their surprising locations.\n\nOne of the most unusual post offices is found in Vanuatu, a country comprising many islands in the South Pacific Ocean. Located in Hideaway Island Marine Sanctuary, the world's first underwater post office lies fifty meters offshore and three meters below the water's surface. A flag flown above the site announces when the postal workers — trained divers who swim to work wearing scuba equipment — are on duty. An estimated 100,000 tourists have used the post office since its opening in 2003. Visitors who choose to dive can purchase waterproof postcards on shore and swim out to mail them (non-divers have the option of placing them in a mailbox located in a hotel). Vanuatu Post encourages visitors to literally look below the surface.\n\nAnother postal facility that owes its fame to its location is the Penguin Post Office, the most popular tourist attraction in Antarctica. Run by the United Kingdom Antarctic Heritage Trust, the world's southernmost post office is situated at Port Lockroy, on tiny Wiencke Island, 1100 kilometers from the tip of South America. The post office operates only during the four months of summer, when thousands of tourists arrive on cruise ships. The four-person staff is replaced every year. Despite the remote location, cold weather, minimal salary, and crude living conditions, more than fifty people eagerly apply each year to the Heritage Trust for the privilege of undergoing this singular experience.","dir":"ltr"}],"items":[{"id":"e1-1","type":"sentence_completion","dir":"ltr","stem":"Jackals can live up to 10 years in the wild and up to 16 years in _____.","options":["anxiety","severity","captivity","royalty"],"answer":3},{"id":"e1-2","type":"sentence_completion","dir":"ltr","stem":"Landscape architect Hoichi Kurisu _____ nearly two years of his life to designing the Morikami Museum and Japanese Gardens in Delray Beach, Florida.","options":["devoted","exposed","composed","obeyed"],"answer":1},{"id":"e1-9","type":"restatement","dir":"ltr","instruction":"Choose the restatement which best expresses the meaning of the original sentence.","stem":"Katie Mulcahey was the only person fined for violating a short-lived 1908 New York City ordinance that prohibited women from smoking in public.","options":["New York City's 1908 ban against women smoking in public was overturned shortly after Katie Mulcahey was fined for violating the law.","Katie Mulcahey was the first person – but not the last – to defy a New York City law that made it illegal for women to smoke in public.","In 1908, Katie Mulcahey was fined for protesting against a New York City regulation barring women from smoking in public.","During the brief time that New York City banned women from smoking in public, just one person – Katie Mulcahey – was fined for breaking the law."],"answer":4},{"id":"e1-13","type":"reading_question","stimulusId":"e1p1","dir":"ltr","stem":"What do the two post offices described in the text have in common?","options":["They are in convenient locations.","They provide a unique experience.","They may soon have to close.","They have streamlined their services."],"answer":2},{"id":"e1-14","type":"reading_question","stimulusId":"e1p1","dir":"ltr","stem":"In line 3, \"become obsolete\" is closest in meaning to -","options":["greatly improve","no longer exist","spread to new places","look different"],"answer":2}]}]};
+</script>
+
+<script>
+(function(){
+'use strict';
+const M = window.MapamCore, app = document.getElementById('app');
+const dial = document.getElementById('dial'), clock = document.getElementById('clock');
+const arc = document.getElementById('arc'), rail = document.querySelector('#rail i');
+const C = 2 * Math.PI * 33;
+arc.style.strokeDasharray = C;
+
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const para = s => esc(s).split(/\n{2,}/).map(p=>'<p>'+p.replace(/\n/g,'<br>')+'</p>').join('');
+const isHe = s => /[\u0590-\u05FF]/.test(s||'');
+
+/* ---- the dial ----------------------------------------------------------- */
+function paintTime(remaining,total,visible){
+  dial.classList.toggle('hidden',!visible);
+  if(!visible) return;
+  const p = total>0 ? Math.max(0,Math.min(1,remaining/total)) : 0;
+  arc.style.strokeDashoffset = C*(1-p);
+  dial.classList.toggle('warm', p<=0.45 && p>0.18);
+  dial.classList.toggle('late', p<=0.18);
+  clock.textContent = M.fmt(remaining);
+}
+function paintRail(){
+  if(!test){ rail.style.width='0%'; return; }
+  const done = test.steps.slice(0,cursor).reduce((n,s)=>n+(s.seconds||0),0);
+  rail.style.width = Math.min(100, 100*done/Math.max(1,test.summary.totalSeconds))+'%';
+}
+
+/* ---- state -------------------------------------------------------------- */
+let bank=null, test=null, cursor=0, responses={}, spent={}, essay='';
+let timer=null, deadline=0, stepTotal=0, onExpire=null, showDial=true;
+
+function stopTimer(){ if(timer) clearInterval(timer); timer=null; }
+function once(fn){ let done=false; return function(){ if(done) return; done=true; fn(); }; }
+function startTimer(seconds, expire, visible){
+  if(visible===undefined) visible=true;
+  stopTimer(); stepTotal=seconds; deadline=Date.now()+seconds*1000; onExpire=expire; showDial=visible;
+  paintTime(seconds,seconds,visible);
+  timer=setInterval(()=>{
+    const left=(deadline-Date.now())/1000;
+    paintTime(Math.max(0,left),stepTotal,showDial);
+    if(left<=0){ stopTimer(); onExpire&&onExpire(); }
+  },100);
+}
+const remaining = () => Math.max(0,(deadline-Date.now())/1000);
+
+function render(html){ document.onkeydown=null; app.innerHTML='<div class="enter">'+html+'</div>'; }
+
+/* ---- setup -------------------------------------------------------------- */
+function setup(msg){
+  stopTimer(); paintTime(0,0,false); test=null; paintRail();
+  const ready = !!bank, problems = ready ? M.validateBank(bank) : [];
+  const cfg = {
+    writingMinutes:+((document.getElementById('wmin')||{}).value||(bank&&bank.writingTask&&bank.writingTask.minutes)||30),
+    blueprint: (document.getElementById('bp')||{}).value || 'full',
+    seed: (document.getElementById('seed')||{}).value || 'a',
+    includeWriting: !(document.getElementById('skipw')||{}).checked
+  };
+  const rawBp = cfg.blueprint;
+  if(cfg.blueprint==='full') cfg.blueprint=null;
+  const preview = (ready && !problems.length) ? M.buildTest(bank,cfg) : null;
+
+  render(`
+  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(11dvh,90px)">
+    <header style="text-align:center">
+      <p class="tag">מפע״ם · בחינה בזמן קצוב לכל שאלה</p>
+      <h1 style="margin-block:14px 12px">רגע אחד לכל שאלה</h1>
+      <p style="color:var(--muted);max-width:46ch;margin:0 auto">כל שאלה מקבלת את הזמן שהיא מקבלת במפע״ם. כשהזמן נגמר עוברים הלאה, ואין חזרה אחורה.</p>
+    </header>
+
+    ${msg?`<div class="notice warn">${esc(msg)}</div>`:''}
+
+    <div id="drop" class="drop">
+      <b>גררו לכאן בנק שאלות</b><br>
+      <span style="color:var(--muted);font-size:15px">או לחצו לבחירת קובץ JSON</span>
+      <input id="file" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div style="text-align:center;margin-block-start:-8px">
+      <button class="btn quiet" id="demo">להתחיל מבנק הדוגמה</button>
+    </div>
+
+    ${ready?(problems.length?`
+      <div class="notice warn">
+        <b>הבנק לא תקין (${problems.length}):</b>
+        <ul>${problems.slice(0,10).map(p=>`<li>${esc(p.message)}</li>`).join('')}</ul>
+      </div>`:`
+      <div class="card">
+        <h3>${esc((bank.meta&&bank.meta.title)||'בנק ללא שם')}</h3>
+        <div class="stats" style="margin-block-start:18px">
+          <div class="stat"><div class="k">שאלות</div><div class="v">${preview.summary.counts.items}</div></div>
+          <div class="stat"><div class="k">קטעים ותרשימים</div><div class="v">${preview.summary.counts.stimuli}</div></div>
+          <div class="stat"><div class="k">משך המושב</div><div class="v">${Math.round(preview.summary.totalSeconds/60)}<small> מתוך ${Math.round(preview.summary.maxSeconds/60)} דק׳</small></div></div>
+        </div>
+        <div class="field">
+          <label for="bp">אורך</label>
+          <select id="bp">
+            <option value="standard"${rawBp==='standard'?' selected':''}>מפע״ם מלא — דגימה מהבנק</option>
+            <option value="half"${rawBp==='half'?' selected':''}>חצי אורך — הרצת חימום</option>
+            <option value="full"${rawBp==='full'?' selected':''}>כל מה שיש בבנק</option>
+          </select>
+          <label for="seed">גרסה</label>
+          <input type="text" id="seed" value="${esc(cfg.seed)}" style="width:70px">
+        </div>
+        <div class="field">
+          <label for="wmin">מטלת כתיבה</label>
+          <select id="wmin">${M.RULES.writing.allowedMinutes.map(m=>`<option value="${m}"${m===cfg.writingMinutes?' selected':''}>${m} דקות</option>`).join('')}</select>
+          <label><input type="checkbox" id="skipw"${cfg.includeWriting?'':' checked'}> לדלג עליה</label>
+        </div>
+        ${preview.summary.overBudget?`<div class="notice warn" style="margin-block-start:16px">המושב חורג מתקרת ${Math.round(preview.summary.maxSeconds/60)} הדקות. בחרו אורך קצר יותר.</div>`:''}
+        ${preview.summary.notes.length?`<div class="notice" style="margin-block-start:16px"><b>הבנק קטן מהמתוכנן:</b><ul>${preview.summary.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></div>`:''}
+      </div>
+      <div style="text-align:center"><button class="btn" id="start">להתחיל</button></div>`):''}
+  </div></div>`);
+
+  const fileInput=document.getElementById('file'), drop=document.getElementById('drop');
+  drop.onclick=()=>fileInput.click();
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+  drop.ondragleave=()=>drop.classList.remove('over');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');readFile(e.dataTransfer.files[0])};
+  fileInput.onchange=e=>readFile(e.target.files[0]);
+  document.getElementById('demo').onclick=()=>{ bank=EXAMPLE_BANK; setup(EXAMPLE_BANK?null:'אין בנק דוגמה מוטמע בקובץ הזה.'); };
+  ['wmin','bp','skipw','seed'].forEach(id=>{ const el=document.getElementById(id); if(el) el.onchange=()=>setup(); });
+  const start=document.getElementById('start');
+  if(start) start.onclick=()=>begin(cfg);
+}
+
+function readFile(f){
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ bank=JSON.parse(r.result); setup(); }catch(err){ setup('הקובץ אינו JSON תקין: '+err.message); } };
+  r.readAsText(f,'utf-8');
+}
+
+function begin(cfg){
+  test = M.buildTest(bank,cfg);
+  cursor=0; responses={}; spent={}; essay='';
+  step();
+}
+function next(){ cursor++; paintRail(); step(); }
+
+function step(){
+  stopTimer();
+  const s = test.steps[cursor];
+  if(!s || s.kind==='end') return results();
+  ({ 'section-intro':intro, writing:writing, break:brk, stimulus:stimulus, item:item }[s.kind]||next)(s);
+}
+
+/* ---- section intro ------------------------------------------------------ */
+function intro(s){
+  paintTime(0,0,false);
+  render(`
+  <div class="bleed">
+    <p class="tag">${esc(M.LABELS.domain[s.domain]||'')}</p>
+    <h1>${esc(s.title)}</h1>
+    ${s.subtitle?`<p style="color:#8CA096;max-width:44ch;margin:0">${esc(s.subtitle)}</p>`:''}
+    <p class="tag">${s.itemCount} שאלות · לכל אחת זמן משלה</p>
+    <button class="btn" id="go">להתחיל</button>
+  </div>`);
+  bindGo(once(next));
+}
+
+/* ---- break -------------------------------------------------------------- */
+function brk(s){
+  render(`
+  <div class="bleed">
+    <p class="tag">הפסקה</p>
+    <div class="breath-wrap">
+      <div class="breath"></div><div class="breath b2"></div>
+      <div class="breath-inner">
+        <div class="big" id="bigclock">${M.fmt(s.seconds)}</div>
+        <p class="tag" style="color:#6E8278">נשמו יחד עם המעגל</p>
+      </div>
+    </div>
+    <p style="color:#8CA096;margin:0">הבחינה תמשיך מעצמה כשההפסקה תסתיים.</p>
+    ${M.RULES.breaks.skippable?`<button class="btn" id="go">לקצר את ההפסקה</button>`:''}
+  </div>`);
+  const big=document.getElementById('bigclock'), adv=once(next);
+  startTimer(s.seconds, adv, false);
+  const paint=setInterval(()=>{ if(!timer){clearInterval(paint);return;} big.textContent=M.fmt(remaining()); },200);
+  bindGo(adv);
+}
+
+/* ---- writing ------------------------------------------------------------ */
+function writing(s){
+  render(`
+  <div class="stage">
+    <div class="topbar"><span class="tag">מטלת כתיבה</span><span class="tag dot">${s.seconds/60} דקות</span></div>
+    <div class="sheet narrow">
+      <div class="card">
+        ${s.intro?`<p class="instruction">${esc(s.intro)}</p>`:''}
+        <div class="stem">${esc(s.prompt)}</div>
+      </div>
+      <textarea id="essay" placeholder="כתבו כאן…" spellcheck="false"></textarea>
+      <div class="meter">
+        <span id="lw">שורות <b id="lines">0</b> מתוך ${s.minLines}</span>
+        <span>מילים <b id="words">0</b></span>
+      </div>
+    </div>
+    <div class="controls"><button class="btn" id="go">סיימתי</button><span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span></div>
+  </div>`);
+  const ta=document.getElementById('essay');
+  const upd=()=>{
+    essay=ta.value;
+    const words=(essay.trim().match(/\S+/g)||[]).length;
+    const lines=essay.split('\n').reduce((n,l)=>n+Math.max(1,Math.ceil(l.length/62)),0);
+    document.getElementById('words').textContent=words;
+    document.getElementById('lines').textContent=lines;
+    document.getElementById('lw').classList.toggle('short',lines<s.minLines);
+  };
+  ta.oninput=upd; upd(); ta.focus();
+  const finish=once(()=>{ essay=ta.value; next(); });
+  startTimer(s.seconds, finish);
+  document.getElementById('go').onclick=finish;
+  document.onkeydown=e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();finish();} };
+}
+
+/* ---- stimulus ----------------------------------------------------------- */
+function stimBody(s,maxh){
+  const dir = s.dir || (isHe((s.body||'')+(s.title||''))?'rtl':'ltr');
+  return `<div class="passage" dir="${dir}" style="max-height:${maxh}">${s.html||''}${s.body?para(s.body):''}${s.image?`<img src="${esc(s.image)}" alt="" style="max-width:100%;border-radius:var(--r-sm)">`:''}</div>`;
+}
+function stimulus(s){
+  render(`
+  <div class="stage">
+    <div class="topbar"><span class="tag">${esc(M.LABELS.domain[s.domain])}</span><span class="tag dot">זמן קריאה · ${Math.round(s.seconds/60)} דקות</span></div>
+    <div class="sheet narrow"><div class="card"><h3>${esc(s.title)}</h3>${stimBody(s,'58dvh')}</div></div>
+    <div class="controls"><button class="btn" id="go">קראתי, לשאלות</button><span class="hint"><kbd>Enter</kbd></span></div>
+  </div>`);
+  const adv=once(next); startTimer(s.seconds,adv); bindGo(adv);
+}
+
+/* ---- question ----------------------------------------------------------- */
+function item(s){
+  const stim = s.stimulusId ? test.steps.find(x=>x.kind==='stimulus'&&x.stimulusId===s.stimulusId) : null;
+  const dir = s.dir || (isHe(s.stem)?'rtl':'ltr');
+  const sib = test.steps.filter(x=>x.kind==='item'&&x.sectionId===s.sectionId);
+  const mins = s.seconds%60 ? (s.seconds/60).toFixed(1) : (s.seconds/60);
+
+  render(`
+  <div class="stage">
+    <div class="topbar">
+      <span class="tag">${esc(M.LABELS.domain[s.domain])}</span>
+      <span class="tag dot">${esc(M.LABELS.type[s.type]||s.type)}</span>
+      <span class="tag dot">${sib.indexOf(s)+1} מתוך ${sib.length}</span>
+      <span class="tag dot">${mins} דק׳</span>
+    </div>
+    <div class="sheet${stim?' split':' narrow'}">
+      ${stim?`<div class="card"><h3>${esc(stim.title)}</h3>${stimBody(stim,'54dvh')}</div>`:''}
+      <div class="card">
+        ${s.instruction?`<p class="instruction">${esc(s.instruction)}</p>`:''}
+        <div class="stem" dir="${dir}">${esc(s.stem)}</div>
+        ${s.image?`<img src="${esc(s.image)}" alt="" style="max-width:100%;margin-block-start:20px;border-radius:var(--r-sm)">`:''}
+        <div class="options" role="radiogroup">
+          ${s.options.map((o,i)=>`
+            <button class="opt" role="radio" aria-checked="false" data-i="${i+1}" dir="${dir}">
+              <span class="pip"></span><span class="label">${esc(o)}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="go">המשך</button>
+      <span class="hint"><kbd>1</kbd>–<kbd>4</kbd> לבחירה · <kbd>Enter</kbd> להמשך</span>
+    </div>
+  </div>`);
+
+  const opts=[...document.querySelectorAll('.opt')];
+  const pick=i=>{ responses[s.itemId]=i; opts.forEach(o=>o.setAttribute('aria-checked', o.dataset.i==i)); };
+  opts.forEach(o=>o.onclick=()=>pick(+o.dataset.i));
+
+  const finish=once(()=>{ spent[s.itemId]=Math.round(stepTotal-remaining()); next(); });
+  startTimer(s.seconds, finish);
+  document.getElementById('go').onclick=finish;
+  document.onkeydown=e=>{
+    if(/^[1-4]$/.test(e.key)){ e.preventDefault(); pick(+e.key); }
+    else if(e.key==='Enter'){ e.preventDefault(); finish(); }
+  };
+}
+
+function bindGo(fn){
+  const b=document.getElementById('go'); if(b) b.onclick=fn;
+  document.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(); } };
+}
+
+/* ---- results ------------------------------------------------------------ */
+function results(){
+  stopTimer(); paintTime(0,0,false); document.onkeydown=null; rail.style.width='100%';
+  const r = M.score(test, responses);
+  const dom = [['verbal','חשיבה מילולית'],['quantitative','חשיבה כמותית'],['english','אנגלית']]
+    .filter(([k])=>r.attempted[k]>0);
+
+  render(`
+  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(8dvh,64px)">
+    <header style="text-align:center">
+      <p class="tag">סיימת</p>
+      <h1 style="margin-block:12px 0">התוצאות</h1>
+    </header>
+
+    <div class="stats">
+      ${dom.map(([k,label])=>`
+        <div class="stat"><div class="k">${label}</div>
+          <div class="v">${r.uniform[k]}<small> · ${r.raw[k]} מתוך ${r.attempted[k]}</small></div></div>`).join('')}
+    </div>
+
+    <div class="card">
+      <h3>אומדן ציון כללי</h3>
+      <div class="stats" style="margin-block-start:16px">
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">רב־תחומי</div><div class="v">${r.general.multi}</div></div>
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">דגש מילולי</div><div class="v">${r.general.verbalEmphasis}</div></div>
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">דגש כמותי</div><div class="v">${r.general.quantEmphasis}</div></div>
+      </div>
+      <p class="instruction" style="margin:16px 0 0">בסולם 200–800, לפי טבלאות ההמרה של המועד הזה. האומדן מניח מבחן מלא ואינו כולל את מטלת הכתיבה.</p>
+    </div>
+
+    ${essay.trim()?`<div class="card"><h3>החיבור שלך</h3><div class="passage" style="max-height:32dvh">${para(essay)}</div></div>`:''}
+
+    <div>
+      <p class="tag" style="margin-block-end:12px">שאלה אחר שאלה</p>
+      <table class="review">
+        <thead><tr><th>שאלה</th><th>סוג</th><th>תשובתך</th><th>נכונה</th><th>זמן</th></tr></thead>
+        <tbody>${r.detail.map(d=>`
+          <tr>
+            <td class="n"><span class="dot ${d.given==null?'na':d.correct?'ok':'no'}"></span>${esc(d.itemId)}</td>
+            <td>${esc(M.LABELS.type[d.type]||d.type)}</td>
+            <td class="n">${d.given==null?'—':d.given}</td>
+            <td class="n">${d.answer}</td>
+            <td class="n">${M.fmt(spent[d.itemId]||0)}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="again">להריץ שוב</button>
+      <button class="btn quiet" id="dl">להוריד את התשובות</button>
+    </div>
+  </div></div>`);
+
+  document.getElementById('again').onclick=()=>setup();
+  document.getElementById('dl').onclick=()=>{
+    const blob=new Blob([JSON.stringify({meta:test.meta,responses,spent,essay,score:r},null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=(test.meta.id||'mapam')+'-attempt.json'; a.click();
+  };
+}
+
+window.addEventListener('beforeunload',e=>{
+  if(test && test.steps[cursor] && test.steps[cursor].kind!=='end'){ e.preventDefault(); e.returnValue=''; }
+});
+
+setup();
+})();
+</script>
+</body>
+</html>

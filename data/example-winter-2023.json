@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "id": "nite-winter-2023-excerpt",
+    "title": "בחינה פסיכומטרית להתנסות — מועד חורף 2023",
+    "language": "he",
+    "note": "קטע קצר מן המבחן המלא, לצורך הדגמת המבנה. השלימו את שאר הפריטים באותו פורמט."
+  },
+
+  "writingTask": {
+    "minutes": 30,
+    "minLines": 25,
+    "intro": "קראו בעיון את המטלה וכתבו חיבור. אורך החיבור הנדרש — 25 שורות לפחות. כתבו בעברית בלבד, בסגנון ההולם כתיבה עיונית, והקפידו על ארגון הכתוב ועל לשון תקינה ובהירה.",
+    "prompt": "בשנים האחרונות חלה עלייה ניכרת במספר רוכבי האופניים בערים הגדולות. החוק אוסר על רוכבי אופניים לרכוב על המדרכות מחשש שיפגעו בהולכי רגל. ואולם, רוכבי האופניים טוענים שהרכיבה על הכביש מסוכנת מאוד, והם דורשים כי בכל מקום שאין בו שביל ייעודי לאופניים תותר הרכיבה על המדרכה.\n\nלדעתכם, האם יש להתיר לרוכבי האופניים בערים הגדולות לרכוב על המדרכות במקומות שאי אפשר לסלול בהם שבילים ייעודיים לאופניים? נמקו."
+  },
+
+  "sections": [
+    {
+      "id": "v1",
+      "domain": "verbal",
+      "title": "חשיבה מילולית — פרק ראשון",
+      "subtitle": "אנלוגיות, שאלות הבנה והסקה, שאלות על קטע קריאה",
+      "stimuli": [
+        {
+          "id": "v1p1",
+          "kind": "reading_passage",
+          "title": "קטע קריאה — קטשופ",
+          "body": "כאשר שכרה חברת המזון קמפבל בשנת 1986 את האוורד מוסקוביץ' כדי לפתח עבורה רוטב עגבניות לפסטה, רווחה הסברה שלכל מאכל יש מתכון מושלם, המשלב באופן כה מוצלח בין מרכיביו, עד שכל מי שיטעם ממנו יתאהב בו מייד. מוסקוביץ', דוקטור לפסיכופיזיקה, ניגש למטלה בעזרת ארגז כלים מדעי: הוא הרכיב ארבעים וחמש גרסאות של רוטב עגבניות, וביקש מקבוצות של טועמים לדרג אותן. הממצאים שהתקבלו נראו מבלבלים: במקום להצביע כמצופה על רוטב אחד ויחיד האהוב על כולם, הם לא הראו כל דפוס עקיב. אלא שניתוח מדוקדק העלה מסקנה מורכבת יותר: הטועמים נחלקו לקבוצות שלכל אחת הרוטב המושלם שלה, וככל שגרסה מסוימת מצאה חן יותר בעיני חברי קבוצה אחת, כך היא נשאה חן פחות בעיני חברי הקבוצות האחרות. בכל הנוגע למזון, טען אפוא מוסקוביץ', הרדיפה אחר האוניברסלי מיותרת, מפני שהוא כלל אינו קיים.\n\nטענתו של מוסקוביץ' אומנם זכתה לחיזוק מניסויים במאכלים אחרים וחוללה שינוי דרמטי בעולם המזון התעשייתי, אך מוצר מזון אחד מכשיל אותה שוב ושוב. למרות ניסיונות רבים של חברות מזון לייצר קטשופ מסוגים שונים, רובנו עדיין מעדיפים קטשופ הדומה מאוד לזה שהופיע בראשית המאה ה־20. בשלהי המאה ה־19 טען משרד החקלאות האמריקני שבנזואט, החומר המשמר בקטשופ של אותם ימים, מסוכן לבריאות. בעקבות זאת התפלגו יצרני הקטשופ לשניים: האגף השמרני טען שאין כל סכנה בצריכת בנזואט בכמויות קטנות, והמשיך לייצר קטשופ כפי שהיה נהוג עד אז, מעגבניות בוסר ומכמות קטנה בלבד של חומץ, שעשוהו דליל ומימי. מנגד ניצבו אלו שטענו כי מצאו דרך להחליף את הבנזואט: הם הגדילו מאוד את כמות החומץ בקטשופ, במידה כזו שיוכל לשמש חומר משמר, ואגב כך גם עברו להשתמש בעגבניות בשלות, והתוצאה הייתה רוטב סמיך ועשיר בטעמים. ההימור השתלם: למרות מחירו הזול, נעלם קטשופ הבנזואט מן העולם."
+        }
+      ],
+      "items": [
+        { "id": "v1-1", "type": "analogy", "instruction": "מצאו את היחס בין המשמעויות של שתי המילים המודגשות, ובחרו את זוג המילים שהיחס ביניהן דומה לו ביותר.", "stem": "עוגן : להפליג —", "options": ["תריס : להחשיך", "קשר : להתיר", "מפתח : לנעול", "פקק : למזוג"], "answer": 4 },
+        { "id": "v1-2", "type": "analogy", "stem": "מגהץ : חָלק —", "options": ["סרגל : ישר", "כרית : רך", "סולם : גבוה", "מגבת : יבש"], "answer": 4 },
+        { "id": "v1-7", "type": "logic", "stem": "יום שישי החל ב־13 בחודש נחשב בעיני רבים ליום מבשר רעות. מחקר שנערך בהולנד קובע שיום שישי כזה דווקא בטוח יותר מימי שישי אחרים: יש בו פחות תאונות, שרפות וגנבות. החוקרים הסבירו את הממצאים בכך שרבים מההולנדים מאמינים שיום שישי כזה מועד לאסונות, ונוטים להיות זהירים בו יותר ולמעט ביציאה מבתיהם.\n\nאיזו מהתופעות הבאות היא הדומה ביותר לתופעה המתוארת לעיל?", "options": ["סקי הוא ענף ספורט מסוכן, הגורם לפציעות רבות בקרב גולשים לא מקצועיים, אך גולשי סקי מקצועיים נפצעים לעיתים רחוקות בלבד", "סטודנטים נוטים להצליח יותר במבחנים שהם חוששים שייכשלו בהם, מכיוון שהם משקיעים זמן רב יותר בלימוד לקראתם", "אנשים החוששים מכלבים וניגשים אליהם בזהירות יתרה מעוררים את חשדם של הכלבים ובכך גורמים להם להיות תוקפניים יותר כלפיהם", "הגדלת מספר השוטרים ברחובות מסייעת בצמצום הפשיעה בשעות הלילה יותר משהיא מסייעת בצמצום הפשיעה בשעות היום"], "answer": 2 },
+        { "id": "v1-10", "type": "sentence_completion", "instruction": "בחרו את התשובה המתאימה ביותר להשלמת החסר.", "stem": "______ להפעיל לחץ על עובד כדי ש______ החלטתו, אם החליט לפרוש מתפקידו; זאת ______ שארגון שאינו ______, נידון מראש לכישלון.", "options": ["יש / יממש את / מכיוון / עושה כל שביכולתו כדי להימנע מתחלופת עובדים", "יש / ישנה את / משום / שם לעצמו כיעד לצמצם ככל האפשר את תחלופת העובדים", "אין / יחזור בו מ־ / אף על פי / מאפשר חופש בחירה לעובדיו", "יש / יממש את / אף על פי / מעסיק אך ורק עובדים המעוניינים בתפקידם"], "answer": 2 },
+        { "id": "v1-18", "type": "reading_question", "stimulusId": "v1p1", "stem": "רועי ומיכל שמעו על הטענה של מוסקוביץ' וטענו שהעדפותיהם בנוגע לסלט יכולות להיחשב עדות שתחזק אותה. איזו מן האפשרויות הבאות היא המתאימה ביותר לתיאור העדפותיהם?", "options": ["רועי נוהג לאכול סלט עם עגבניות שרי, ואילו מיכל מעדיפה להכין סלט שאינו מכיל עגבניות כאלו, בשל מחירן היקר", "רועי אוהב סלט המכיל גזר, ואילו מיכל טוענת שטעמו המתוק פוגם בטעמו החמצמץ של הסלט החביב עליה", "רועי ומיכל מסכימים שניהם שהוספת שמיר לסלט תפגע בטעמו, אלא אם כן יש בסלט גם כוסברה", "רועי אוהב סלט המכיל אגוזים, ומיכל, שהייתה בתחילה ספקנית, משוכנעת מאז שטעמה ממנו שהאגוזים הם תוספת הכרחית לכל סלט"], "answer": 2 },
+        { "id": "v1-19", "type": "reading_question", "stimulusId": "v1p1", "stem": "איזו מן האפשרויות הבאות עולה מן הפסקה השנייה בנוגע לטענתו של משרד החקלאות האמריקני כי הבנזואט מסוכן לבריאות?", "options": ["הטענה נמצאה נכונה", "הטענה הביאה לפיתוחו של הקטשופ המוכר לנו כיום", "הטענה הובילה לאיסור על השימוש בבנזואט כחומר משמר", "הטענה הועלתה עוד בטרם הומצא הקטשופ"], "answer": 2 }
+      ]
+    },
+
+    {
+      "id": "q2",
+      "domain": "quantitative",
+      "title": "חשיבה כמותית — פרק שני",
+      "subtitle": "שאלות ובעיות, הסקה מטבלה",
+      "stimuli": [
+        {
+          "id": "q2t1",
+          "kind": "figure",
+          "title": "הסקה מטבלה — מטע שזיפים",
+          "body": "בטבלה מוצגים נתונים שנרשמו בסוף שנת 2020 על פירות הנגועים במזיקים במטע שזיפים. עצי השזיף נטועים ב־7 חלקות (א–ז). בכל טור נטועים 4 עצים, אחד מכל זן: A, B, C, D. עבור כל זן רשום אחוז הפירות הנגועים בכל חלקה. הניחו שלכל עץ מספר שווה של שזיפים.",
+          "html": "<table><thead><tr><th>שם החלקה</th><th>א</th><th>ב</th><th>ג</th><th>ד</th><th>ה</th><th>ו</th><th>ז</th></tr></thead><tbody><tr><th>מספר טורי עצים</th><td>5</td><td>3</td><td>7</td><td>4</td><td>5</td><td>4</td><td>2</td></tr><tr><th>זן A</th><td>10</td><td>25</td><td>33⅓</td><td>20</td><td>80</td><td>20</td><td>5</td></tr><tr><th>זן B</th><td>50</td><td>25</td><td>50</td><td>25</td><td>66⅔</td><td>10</td><td>10</td></tr><tr><th>זן C</th><td>75</td><td>50</td><td>66⅔</td><td>50</td><td>50</td><td>25</td><td>25</td></tr><tr><th>זן D</th><td>25</td><td>80</td><td>70</td><td>25</td><td>33⅓</td><td>15</td><td>20</td></tr><tr><th>שנת הנטיעה</th><td>1993</td><td>1995</td><td>1998</td><td>2005</td><td>2008</td><td>2012</td><td>2017</td></tr></tbody></table>"
+        }
+      ],
+      "items": [
+        { "id": "q2-7", "type": "problem", "stem": "סדרת טלוויזיה מחולקת לכמה עונות, ובכל עונה 13 פרקים. לאיזו עונה שייך הפרק ה־120 בסדרה?", "options": ["9", "10", "11", "12"], "answer": 2 },
+        { "id": "q2-8", "type": "problem", "stem": "כמה מחלקים זוגיים יש למספר 40 (לא כולל 40 עצמו)?", "options": ["5", "8", "3", "4"], "answer": 1 },
+        { "id": "q2-16", "type": "figure_question", "stimulusId": "q2t1", "stem": "בבחירה אקראית, הסיכוי הגבוה ביותר למצוא שזיף שאינו נגוע הוא בבחירה מתוך השזיפים מזן ______ בחלקה ______.", "options": ["A ; ז", "B ; ד", "C ; ה", "D ; ו"], "answer": 1 },
+        { "id": "q2-17", "type": "figure_question", "stimulusId": "q2t1", "stem": "בסוף שנת 2020 הניבו עצי השזיף בחלקה ה בסך הכול 600 שזיפים מזן מסוים. 400 מתוכם היו נגועים. באיזה זן שזיפים מדובר?", "options": ["A", "B", "C", "D"], "answer": 2 }
+      ]
+    },
+
+    {
+      "id": "e1",
+      "domain": "english",
+      "title": "English — Section One",
+      "subtitle": "Sentence Completions, Restatements, Reading Comprehension",
+      "stimuli": [
+        {
+          "id": "e1p1",
+          "kind": "reading_passage",
+          "title": "Text I — Unusual Post Offices",
+          "body": "In today's world of fast, efficient communication such as email and WhatsApp, why would anyone bother with stamps and envelopes? Indeed, \"snail mail\" — as the regular postal system is often called — may eventually become obsolete. Some post offices have radically streamlined the services they provide or have closed altogether. However, a few are flourishing — thanks to their surprising locations.\n\nOne of the most unusual post offices is found in Vanuatu, a country comprising many islands in the South Pacific Ocean. Located in Hideaway Island Marine Sanctuary, the world's first underwater post office lies fifty meters offshore and three meters below the water's surface. A flag flown above the site announces when the postal workers — trained divers who swim to work wearing scuba equipment — are on duty. An estimated 100,000 tourists have used the post office since its opening in 2003. Visitors who choose to dive can purchase waterproof postcards on shore and swim out to mail them (non-divers have the option of placing them in a mailbox located in a hotel). Vanuatu Post encourages visitors to literally look below the surface.\n\nAnother postal facility that owes its fame to its location is the Penguin Post Office, the most popular tourist attraction in Antarctica. Run by the United Kingdom Antarctic Heritage Trust, the world's southernmost post office is situated at Port Lockroy, on tiny Wiencke Island, 1100 kilometers from the tip of South America. The post office operates only during the four months of summer, when thousands of tourists arrive on cruise ships. The four-person staff is replaced every year. Despite the remote location, cold weather, minimal salary, and crude living conditions, more than fifty people eagerly apply each year to the Heritage Trust for the privilege of undergoing this singular experience.",
+          "dir": "ltr"
+        }
+      ],
+      "items": [
+        { "id": "e1-1", "type": "sentence_completion", "dir": "ltr", "stem": "Jackals can live up to 10 years in the wild and up to 16 years in _____.", "options": ["anxiety", "severity", "captivity", "royalty"], "answer": 3 },
+        { "id": "e1-2", "type": "sentence_completion", "dir": "ltr", "stem": "Landscape architect Hoichi Kurisu _____ nearly two years of his life to designing the Morikami Museum and Japanese Gardens in Delray Beach, Florida.", "options": ["devoted", "exposed", "composed", "obeyed"], "answer": 1 },
+        { "id": "e1-9", "type": "restatement", "dir": "ltr", "instruction": "Choose the restatement which best expresses the meaning of the original sentence.", "stem": "Katie Mulcahey was the only person fined for violating a short-lived 1908 New York City ordinance that prohibited women from smoking in public.", "options": ["New York City's 1908 ban against women smoking in public was overturned shortly after Katie Mulcahey was fined for violating the law.", "Katie Mulcahey was the first person – but not the last – to defy a New York City law that made it illegal for women to smoke in public.", "In 1908, Katie Mulcahey was fined for protesting against a New York City regulation barring women from smoking in public.", "During the brief time that New York City banned women from smoking in public, just one person – Katie Mulcahey – was fined for breaking the law."], "answer": 4 },
+        { "id": "e1-13", "type": "reading_question", "stimulusId": "e1p1", "dir": "ltr", "stem": "What do the two post offices described in the text have in common?", "options": ["They are in convenient locations.", "They provide a unique experience.", "They may soon have to close.", "They have streamlined their services."], "answer": 2 },
+        { "id": "e1-14", "type": "reading_question", "stimulusId": "e1p1", "dir": "ltr", "stem": "In line 3, \"become obsolete\" is closest in meaning to -", "options": ["greatly improve", "no longer exist", "spread to new places", "look different"], "answer": 2 }
+      ]
+    }
+  ]
+}

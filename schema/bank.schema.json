@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/mapam/bank.schema.json",
+  "title": "MAPAM item bank",
+  "description": "A psychometric test expressed as a bank of items. Feed it to mapam-core.buildTest() to get a timed MAPAM sitting.",
+  "type": "object",
+  "required": ["sections"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "id":       { "type": "string", "description": "Slug used for downloaded attempt files." },
+        "title":    { "type": "string" },
+        "language": { "type": "string", "examples": ["he", "ar", "en"] },
+        "source":   { "type": "string" },
+        "note":     { "type": "string" }
+      }
+    },
+
+    "writingTask": {
+      "type": "object",
+      "required": ["prompt"],
+      "properties": {
+        "prompt":   { "type": "string", "description": "The task itself." },
+        "intro":    { "type": "string", "description": "Standing instructions shown above the prompt." },
+        "minutes":  { "type": "integer", "enum": [30, 35, 40, 45], "default": 30 },
+        "minLines": { "type": "integer", "default": 25 }
+      }
+    },
+
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "domain", "items"],
+        "properties": {
+          "id":       { "type": "string" },
+          "domain":   { "enum": ["verbal", "quantitative", "english"] },
+          "title":    { "type": "string" },
+          "subtitle": { "type": "string" },
+
+          "stimuli": {
+            "type": "array",
+            "description": "Reading passages, figures and tables. Each gets its own timed reading step and stays on screen while its questions are answered.",
+            "items": {
+              "type": "object",
+              "required": ["id", "kind"],
+              "properties": {
+                "id":      { "type": "string" },
+                "kind":    { "enum": ["reading_passage", "figure"] },
+                "title":   { "type": "string" },
+                "body":    { "type": "string", "description": "Plain text. Blank lines become paragraphs." },
+                "html":    { "type": "string", "description": "Trusted HTML, for tables. Rendered before body." },
+                "image":   { "type": "string", "description": "URL or data: URI, for scanned figures." },
+                "dir":     { "enum": ["rtl", "ltr"] },
+                "seconds": { "type": "integer", "description": "Overrides the reading time for this stimulus only." }
+              },
+              "anyOf": [
+                { "required": ["body"] }, { "required": ["html"] }, { "required": ["image"] }
+              ]
+            }
+          },
+
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "type", "stem", "options", "answer"],
+              "properties": {
+                "id":     { "type": "string", "description": "Unique across the whole bank." },
+                "type": {
+                  "enum": [
+                    "analogy", "sentence_completion", "logic", "reading_question",
+                    "problem", "figure", "figure_question", "restatement", "reading_passage"
+                  ],
+                  "description": "Must exist in the section's domain — see the time table in mapam-core.js."
+                },
+                "stem":        { "type": "string" },
+                "instruction": { "type": "string", "description": "Shown in small type above the stem." },
+                "options":     { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "string" } },
+                "answer":      { "type": "integer", "minimum": 1, "maximum": 4 },
+                "stimulusId":  { "type": "string", "description": "Required for reading_question and figure_question." },
+                "image":       { "type": "string" },
+                "dir":         { "enum": ["rtl", "ltr"] },
+                "seconds":     { "type": "integer", "description": "Overrides this item's time allowance." },
+                "scored":      { "type": "boolean", "default": true, "description": "false = הפריט אינו נכלל בחישוב הציון" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

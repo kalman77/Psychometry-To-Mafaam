@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מפע״ם — הרצת בחינה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500&family=Bellefair&family=Noto+Serif+Hebrew:wght@400;500&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* a quiet room: desaturated eucalyptus and warm paper, nothing that raises a pulse */
+  --mist:#EDF1EE; --mist-deep:#E3EAE5; --surface:#FCFDFC;
+  --ink:#243330; --muted:#79877F; --line:#DFE7E2;
+  --sage:#6F9D86; --sage-050:#E6EFE9; --sage-100:#CFE0D6;
+  --sand:#D5B074; --clay:#C48C82;
+  --deep:#1F2B27;
+
+  --display:"Bellefair",Georgia,serif;
+  --sans:"Rubik","Segoe UI",system-ui,sans-serif;
+  --read:"Noto Serif Hebrew",Georgia,serif;
+  --num:"Outfit","Rubik",system-ui,sans-serif;
+
+  --r-lg:22px; --r-md:16px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(36,51,48,.04), 0 18px 40px -24px rgba(36,51,48,.22);
+  --shadow-lift:0 2px 4px rgba(36,51,48,.05), 0 28px 56px -28px rgba(36,51,48,.28);
+  --ease:cubic-bezier(.22,.8,.28,1);
+  --pad:clamp(20px,4vw,44px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--mist);color:var(--ink);
+  font-family:var(--sans);font-weight:300;font-size:17px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1.15;margin:0;letter-spacing:.01em}
+h1{font-size:clamp(34px,5.4vw,54px)}
+
+/* the journey rail: the whole sitting at a glance, so time is never a surprise */
+#rail{position:fixed;inset-block-start:0;inset-inline:0;height:2px;background:var(--mist-deep);z-index:60}
+#rail i{display:block;height:100%;width:0;background:var(--sage-100);transition:width .6s var(--ease)}
+
+/* the time dial: one question's clock, unwinding */
+#dial{
+  position:fixed;inset-block-start:16px;left:16px;z-index:61;
+  width:76px;height:76px;border-radius:50%;
+  background:var(--surface);box-shadow:var(--shadow);
+  display:grid;place-items:center;
+  transition:opacity .35s var(--ease),transform .35s var(--ease);
+}
+#dial.hidden{opacity:0;transform:scale(.9);pointer-events:none}
+#dial svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+#dial circle{fill:none;stroke-width:2.5;stroke-linecap:round}
+#dial .track{stroke:var(--sage-050)}
+#dial .arc{stroke:var(--sage);transition:stroke .9s linear}
+#dial.warm .arc{stroke:var(--sand)} #dial.late .arc{stroke:var(--clay)}
+#dial b{font-family:var(--num);font-weight:400;font-size:16px;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums;direction:ltr;color:var(--ink);transition:color .9s linear}
+#dial.late b{color:var(--clay)}
+@media (max-width:720px){#dial{width:60px;height:60px;inset-block-start:10px;left:10px}#dial b{font-size:14px}}
+
+/* shell */
+.stage{min-height:100dvh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:26px var(--pad) 0;justify-content:center}
+.tag{font-size:12.5px;letter-spacing:.06em;color:var(--muted);font-weight:400}
+.tag.dot::before{content:'';display:inline-block;width:3px;height:3px;border-radius:50%;
+  background:var(--sage-100);margin-inline-end:10px;vertical-align:middle}
+
+.sheet{flex:1;width:100%;max-width:1120px;margin:0 auto;padding:22px var(--pad) 0;
+  display:grid;gap:clamp(16px,2.4vw,26px);align-content:start}
+.sheet.split{grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);align-items:start}
+@media (max-width:940px){.sheet.split{grid-template-columns:1fr}}
+.sheet.narrow{max-width:760px}
+
+.card{background:var(--surface);border-radius:var(--r-lg);padding:clamp(22px,2.8vw,38px);
+  box-shadow:var(--shadow)}
+.card h3{font-size:24px;letter-spacing:.015em;margin-bottom:14px;color:var(--ink)}
+
+.passage{max-height:min(58dvh,660px);overflow:auto;font-family:var(--read);
+  font-size:16.5px;line-height:1.9;font-weight:400;color:#2D3D39;
+  scrollbar-width:thin;scrollbar-color:var(--sage-100) transparent}
+.passage::-webkit-scrollbar{width:6px}
+.passage::-webkit-scrollbar-thumb{background:var(--sage-100);border-radius:3px}
+.passage p{margin:0 0 1.15em}
+.passage[dir=ltr]{text-align:left}
+.passage table{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--sans);font-size:13.5px}
+.passage th,.passage td{border-block-end:1px solid var(--line);padding:9px 8px;text-align:center}
+.passage thead th,.passage tbody th{background:var(--sage-050);font-weight:500;color:var(--ink)}
+
+.instruction{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 16px}
+.stem{font-family:var(--read);font-weight:400;font-size:clamp(18px,2vw,21px);
+  line-height:1.75;white-space:pre-wrap;color:var(--ink)}
+.stem[dir=ltr]{text-align:left}
+
+/* answers */
+.options{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:26px 1fr;align-items:start;gap:15px;
+  width:100%;text-align:start;background:transparent;border:1px solid var(--line);
+  border-radius:var(--r-md);padding:15px 18px;cursor:pointer;font-weight:300;
+  transition:background .22s var(--ease),border-color .22s var(--ease),transform .18s var(--ease)}
+.opt:hover{background:var(--sage-050);border-color:var(--sage-100)}
+.opt:active{transform:scale(.995)}
+.opt:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.opt[aria-checked=true]{background:var(--sage-050);border-color:var(--sage)}
+.opt[dir=ltr]{text-align:left}
+.pip{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);
+  margin-block-start:3px;display:grid;place-items:center;
+  transition:border-color .22s var(--ease)}
+.pip::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--sage);
+  transform:scale(0);transition:transform .26s cubic-bezier(.34,1.56,.64,1)}
+.opt[aria-checked=true] .pip{border-color:var(--sage)}
+.opt[aria-checked=true] .pip::after{transform:scale(1)}
+.label{padding-block-start:1px;line-height:1.55}
+
+/* controls */
+.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;
+  padding:clamp(22px,3vw,34px) var(--pad)}
+.btn{border:0;border-radius:999px;background:var(--sage);color:#fff;font-weight:400;
+  padding:13px 34px;cursor:pointer;letter-spacing:.01em;
+  box-shadow:0 1px 2px rgba(36,51,48,.06),0 10px 22px -14px rgba(111,157,134,.9);
+  transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s var(--ease)}
+.btn:hover{background:#628E79;transform:translateY(-1px);box-shadow:var(--shadow-lift)}
+.btn:active{transform:translateY(0)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.btn.quiet{background:transparent;color:var(--muted);box-shadow:none}
+.btn.quiet:hover{background:var(--mist-deep);color:var(--ink);transform:none;box-shadow:none}
+.hint{font-size:12.5px;color:var(--muted)}
+kbd{font-family:var(--num);font-size:11.5px;background:var(--mist-deep);border-radius:5px;
+  padding:2px 7px;color:var(--muted)}
+
+/* full-bleed calm screens */
+.bleed{min-height:100dvh;background:var(--deep);color:#E9EFEB;
+  display:grid;place-content:center;justify-items:center;gap:24px;
+  padding:var(--pad);text-align:center}
+.bleed .tag{color:#8CA096}
+.bleed h1{color:#F1F5F2}
+.bleed .btn{background:transparent;color:#C9D6CF;box-shadow:none;border:1px solid #3B4C45}
+.bleed .btn:hover{background:#2A3A34;color:#F1F5F2;transform:none}
+.big{font-family:var(--num);font-weight:300;font-size:clamp(52px,13vw,110px);
+  line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;direction:ltr}
+
+/* the break screen breathes — four seconds in, four seconds out */
+.breath-wrap{position:relative;display:grid;place-items:center;width:min(320px,68vw);aspect-ratio:1}
+.breath{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, rgba(111,157,134,.32), rgba(111,157,134,0) 70%);
+  animation:breathe 8s ease-in-out infinite}
+.breath.b2{animation-delay:-.9s;opacity:.55}
+@keyframes breathe{0%,100%{transform:scale(.72)}50%{transform:scale(1)}}
+.breath-inner{position:relative;display:grid;gap:8px;justify-items:center}
+
+/* writing */
+textarea{width:100%;min-height:44dvh;resize:vertical;padding:24px 26px;
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
+  font-family:var(--read);font-weight:400;font-size:17px;line-height:2.05;color:var(--ink);
+  box-shadow:var(--shadow);transition:border-color .22s var(--ease)}
+textarea:focus{outline:none;border-color:var(--sage-100)}
+.meter{display:flex;gap:22px;flex-wrap:wrap;font-size:13px;color:var(--muted);
+  justify-content:center;padding-block-start:4px}
+.meter b{font-family:var(--num);font-weight:400;color:var(--ink)}
+.meter .short b{color:var(--clay)}
+
+/* setup + results */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat{background:var(--surface);border-radius:var(--r-md);padding:18px 20px;box-shadow:var(--shadow)}
+.stat .k{font-size:12.5px;color:var(--muted);letter-spacing:.03em}
+.stat .v{font-family:var(--num);font-weight:300;font-size:33px;line-height:1.25;margin-block-start:2px;
+  font-variant-numeric:tabular-nums}
+.stat .v small{font-family:var(--sans);font-size:13px;color:var(--muted);font-weight:300}
+
+.drop{border:1.5px dashed var(--line);border-radius:var(--r-lg);background:var(--surface);
+  padding:34px;text-align:center;cursor:pointer;
+  transition:border-color .25s var(--ease),background .25s var(--ease),transform .25s var(--ease)}
+.drop:hover{border-color:var(--sage-100)}
+.drop.over{border-color:var(--sage);background:var(--sage-050);transform:scale(1.008)}
+.drop b{font-weight:500}
+.field{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-block-start:16px;font-size:15px}
+select,input[type=text]{padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface);font-weight:300}
+select:focus,input:focus{outline:none;border-color:var(--sage-100)}
+.notice{border-radius:var(--r-md);background:var(--sage-050);padding:16px 20px;font-size:14.5px;
+  line-height:1.6;border-inline-start:2px solid var(--sage)}
+.notice.warn{background:#FAF0EE;border-inline-start-color:var(--clay)}
+.notice ul{margin:8px 0 0;padding-inline-start:20px}
+
+table.review{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow)}
+table.review th,table.review td{border-block-end:1px solid var(--line);padding:12px 14px;text-align:start}
+table.review tr:last-child td{border-block-end:0}
+table.review th{font-size:12px;color:var(--muted);font-weight:400;letter-spacing:.03em}
+td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-inline-end:9px}
+.dot.ok{background:var(--sage)} .dot.no{background:var(--clay)} .dot.na{background:var(--line)}
+
+/* motion */
+.options .opt{animation:rise .4s var(--ease) both}
+.options .opt:nth-child(1){animation-delay:.10s} .options .opt:nth-child(2){animation-delay:.16s}
+.options .opt:nth-child(3){animation-delay:.22s} .options .opt:nth-child(4){animation-delay:.28s}
+.enter{animation:rise .38s var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stagger>*{animation:rise .42s var(--ease) both}
+.stagger>*:nth-child(1){animation-delay:.02s} .stagger>*:nth-child(2){animation-delay:.07s}
+.stagger>*:nth-child(3){animation-delay:.12s} .stagger>*:nth-child(4){animation-delay:.17s}
+.stagger>*:nth-child(5){animation-delay:.22s} .stagger>*:nth-child(6){animation-delay:.27s}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<div id="rail"><i></i></div>
+<div id="dial" class="hidden">
+  <svg viewBox="0 0 76 76"><circle class="track" cx="38" cy="38" r="33"/><circle class="arc" id="arc" cx="38" cy="38" r="33"/></svg>
+  <b id="clock">0:00</b>
+</div>
+<main id="app"></main>
+<script>window.EXAMPLE_BANK = {"meta":{"id":"nite-winter-2023-excerpt","title":"בחינה פסיכומטרית להתנסות — מועד חורף 2023","language":"he","note":"קטע קצר מן המבחן המלא, לצורך הדגמת המבנה. השלימו את שאר הפריטים באותו פורמט."},"writingTask":{"minutes":30,"minLines":25,"intro":"קראו בעיון את המטלה וכתבו חיבור. אורך החיבור הנדרש — 25 שורות לפחות. כתבו בעברית בלבד, בסגנון ההולם כתיבה עיונית, והקפידו על ארגון הכתוב ועל לשון תקינה ובהירה.","prompt":"בשנים האחרונות חלה עלייה ניכרת במספר רוכבי האופניים בערים הגדולות. החוק אוסר על רוכבי אופניים לרכוב על המדרכות מחשש שיפגעו בהולכי רגל. ואולם, רוכבי האופניים טוענים שהרכיבה על הכביש מסוכנת מאוד, והם דורשים כי בכל מקום שאין בו שביל ייעודי לאופניים תותר הרכיבה על המדרכה.\n\nלדעתכם, האם יש להתיר לרוכבי האופניים בערים הגדולות לרכוב על המדרכות במקומות שאי אפשר לסלול בהם שבילים ייעודיים לאופניים? נמקו."},"sections":[{"id":"v1","domain":"verbal","title":"חשיבה מילולית — פרק ראשון","subtitle":"אנלוגיות, שאלות הבנה והסקה, שאלות על קטע קריאה","stimuli":[{"id":"v1p1","kind":"reading_passage","title":"קטע קריאה — קטשופ","body":"כאשר שכרה חברת המזון קמפבל בשנת 1986 את האוורד מוסקוביץ' כדי לפתח עבורה רוטב עגבניות לפסטה, רווחה הסברה שלכל מאכל יש מתכון מושלם, המשלב באופן כה מוצלח בין מרכיביו, עד שכל מי שיטעם ממנו יתאהב בו מייד. מוסקוביץ', דוקטור לפסיכופיזיקה, ניגש למטלה בעזרת ארגז כלים מדעי: הוא הרכיב ארבעים וחמש גרסאות של רוטב עגבניות, וביקש מקבוצות של טועמים לדרג אותן. הממצאים שהתקבלו נראו מבלבלים: במקום להצביע כמצופה על רוטב אחד ויחיד האהוב על כולם, הם לא הראו כל דפוס עקיב. אלא שניתוח מדוקדק העלה מסקנה מורכבת יותר: הטועמים נחלקו לקבוצות שלכל אחת הרוטב המושלם שלה, וככל שגרסה מסוימת מצאה חן יותר בעיני חברי קבוצה אחת, כך היא נשאה חן פחות בעיני חברי הקבוצות האחרות. בכל הנוגע למזון, טען אפוא מוסקוביץ', הרדיפה אחר האוניברסלי מיותרת, מפני שהוא כלל אינו קיים.\n\nטענתו של מוסקוביץ' אומנם זכתה לחיזוק מניסויים במאכלים אחרים וחוללה שינוי דרמטי בעולם המזון התעשייתי, אך מוצר מזון אחד מכשיל אותה שוב ושוב. למרות ניסיונות רבים של חברות מזון לייצר קטשופ מסוגים שונים, רובנו עדיין מעדיפים קטשופ הדומה מאוד לזה שהופיע בראשית המאה ה־20. בשלהי המאה ה־19 טען משרד החקלאות האמריקני שבנזואט, החומר המשמר בקטשופ של אותם ימים, מסוכן לבריאות. בעקבות זאת התפלגו יצרני הקטשופ לשניים: האגף השמרני טען שאין כל סכנה בצריכת בנזואט בכמויות קטנות, והמשיך לייצר קטשופ כפי שהיה נהוג עד אז, מעגבניות בוסר ומכמות קטנה בלבד של חומץ, שעשוהו דליל ומימי. מנגד ניצבו אלו שטענו כי מצאו דרך להחליף את הבנזואט: הם הגדילו מאוד את כמות החומץ בקטשופ, במידה כזו שיוכל לשמש חומר משמר, ואגב כך גם עברו להשתמש בעגבניות בשלות, והתוצאה הייתה רוטב סמיך ועשיר בטעמים. ההימור השתלם: למרות מחירו הזול, נעלם קטשופ הבנזואט מן העולם."}],"items":[{"id":"v1-1","type":"analogy","instruction":"מצאו את היחס בין המשמעויות של שתי המילים המודגשות, ובחרו את זוג המילים שהיחס ביניהן דומה לו ביותר.","stem":"עוגן : להפליג —","options":["תריס : להחשיך","קשר : להתיר","מפתח : לנעול","פקק : למזוג"],"answer":4},{"id":"v1-2","type":"analogy","stem":"מגהץ : חָלק —","options":["סרגל : ישר","כרית : רך","סולם : גבוה","מגבת : יבש"],"answer":4},{"id":"v1-7","type":"logic","stem":"יום שישי החל ב־13 בחודש נחשב בעיני רבים ליום מבשר רעות. מחקר שנערך בהולנד קובע שיום שישי כזה דווקא בטוח יותר מימי שישי אחרים: יש בו פחות תאונות, שרפות וגנבות. החוקרים הסבירו את הממצאים בכך שרבים מההולנדים מאמינים שיום שישי כזה מועד לאסונות, ונוטים להיות זהירים בו יותר ולמעט ביציאה מבתיהם.\n\nאיזו מהתופעות הבאות היא הדומה ביותר לתופעה המתוארת לעיל?","options":["סקי הוא ענף ספורט מסוכן, הגורם לפציעות רבות בקרב גולשים לא מקצועיים, אך גולשי סקי מקצועיים נפצעים לעיתים רחוקות בלבד","סטודנטים נוטים להצליח יותר במבחנים שהם חוששים שייכשלו בהם, מכיוון שהם משקיעים זמן רב יותר בלימוד לקראתם","אנשים החוששים מכלבים וניגשים אליהם בזהירות יתרה מעוררים את חשדם של הכלבים ובכך גורמים להם להיות תוקפניים יותר כלפיהם","הגדלת מספר השוטרים ברחובות מסייעת בצמצום הפשיעה בשעות הלילה יותר משהיא מסייעת בצמצום הפשיעה בשעות היום"],"answer":2},{"id":"v1-10","type":"sentence_completion","instruction":"בחרו את התשובה המתאימה ביותר להשלמת החסר.","stem":"______ להפעיל לחץ על עובד כדי ש______ החלטתו, אם החליט לפרוש מתפקידו; זאת ______ שארגון שאינו ______, נידון מראש לכישלון.","options":["יש / יממש את / מכיוון / עושה כל שביכולתו כדי להימנע מתחלופת עובדים","יש / ישנה את / משום / שם לעצמו כיעד לצמצם ככל האפשר את תחלופת העובדים","אין / יחזור בו מ־ / אף על פי / מאפשר חופש בחירה לעובדיו","יש / יממש את / אף על פי / מעסיק אך ורק עובדים המעוניינים בתפקידם"],"answer":2},{"id":"v1-18","type":"reading_question","stimulusId":"v1p1","stem":"רועי ומיכל שמעו על הטענה של מוסקוביץ' וטענו שהעדפותיהם בנוגע לסלט יכולות להיחשב עדות שתחזק אותה. איזו מן האפשרויות הבאות היא המתאימה ביותר לתיאור העדפותיהם?","options":["רועי נוהג לאכול סלט עם עגבניות שרי, ואילו מיכל מעדיפה להכין סלט שאינו מכיל עגבניות כאלו, בשל מחירן היקר","רועי אוהב סלט המכיל גזר, ואילו מיכל טוענת שטעמו המתוק פוגם בטעמו החמצמץ של הסלט החביב עליה","רועי ומיכל מסכימים שניהם שהוספת שמיר לסלט תפגע בטעמו, אלא אם כן יש בסלט גם כוסברה","רועי אוהב סלט המכיל אגוזים, ומיכל, שהייתה בתחילה ספקנית, משוכנעת מאז שטעמה ממנו שהאגוזים הם תוספת הכרחית לכל סלט"],"answer":2},{"id":"v1-19","type":"reading_question","stimulusId":"v1p1","stem":"איזו מן האפשרויות הבאות עולה מן הפסקה השנייה בנוגע לטענתו של משרד החקלאות האמריקני כי הבנזואט מסוכן לבריאות?","options":["הטענה נמצאה נכונה","הטענה הביאה לפיתוחו של הקטשופ המוכר לנו כיום","הטענה הובילה לאיסור על השימוש בבנזואט כחומר משמר","הטענה הועלתה עוד בטרם הומצא הקטשופ"],"answer":2}]},{"id":"q2","domain":"quantitative","title":"חשיבה כמותית — פרק שני","subtitle":"שאלות ובעיות, הסקה מטבלה","stimuli":[{"id":"q2t1","kind":"figure","title":"הסקה מטבלה — מטע שזיפים","body":"בטבלה מוצגים נתונים שנרשמו בסוף שנת 2020 על פירות הנגועים במזיקים במטע שזיפים. עצי השזיף נטועים ב־7 חלקות (א–ז). בכל טור נטועים 4 עצים, אחד מכל זן: A, B, C, D. עבור כל זן רשום אחוז הפירות הנגועים בכל חלקה. הניחו שלכל עץ מספר שווה של שזיפים.","html":"\u003ctable>\u003cthead>\u003ctr>\u003cth>שם החלקה\u003c/th>\u003cth>א\u003c/th>\u003cth>ב\u003c/th>\u003cth>ג\u003c/th>\u003cth>ד\u003c/th>\u003cth>ה\u003c/th>\u003cth>ו\u003c/th>\u003cth>ז\u003c/th>\u003c/tr>\u003c/thead>\u003ctbody>\u003ctr>\u003cth>מספר טורי עצים\u003c/th>\u003ctd>5\u003c/td>\u003ctd>3\u003c/td>\u003ctd>7\u003c/td>\u003ctd>4\u003c/td>\u003ctd>5\u003c/td>\u003ctd>4\u003c/td>\u003ctd>2\u003c/td>\u003c/tr>\u003ctr>\u003cth>זן A\u003c/th>\u003ctd>10\u003c/td>\u003ctd>25\u003c/td>\u003ctd>33⅓\u003c/td>\u003ctd>20\u003c/td>\u003ctd>80\u003c/td>\u003ctd>20\u003c/td>\u003ctd>5\u003c/td>\u003c/tr>\u003ctr>\u003cth>זן B\u003c/th>\u003ctd>50\u003c/td>\u003ctd>25\u003c/td>\u003ctd>50\u003c/td>\u003ctd>25\u003c/td>\u003ctd>66⅔\u003c/td>\u003ctd>10\u003c/td>\u003ctd>10\u003c/td>\u003c/tr>\u003ctr>\u003cth>זן C\u003c/th>\u003ctd>75\u003c/td>\u003ctd>50\u003c/td>\u003ctd>66⅔\u003c/td>\u003ctd>50\u003c/td>\u003ctd>50\u003c/td>\u003ctd>25\u003c/td>\u003ctd>25\u003c/td>\u003c/tr>\u003ctr>\u003cth>זן D\u003c/th>\u003ctd>25\u003c/td>\u003ctd>80\u003c/td>\u003ctd>70\u003c/td>\u003ctd>25\u003c/td>\u003ctd>33⅓\u003c/td>\u003ctd>15\u003c/td>\u003ctd>20\u003c/td>\u003c/tr>\u003ctr>\u003cth>שנת הנטיעה\u003c/th>\u003ctd>1993\u003c/td>\u003ctd>1995\u003c/td>\u003ctd>1998\u003c/td>\u003ctd>2005\u003c/td>\u003ctd>2008\u003c/td>\u003ctd>2012\u003c/td>\u003ctd>2017\u003c/td>\u003c/tr>\u003c/tbody>\u003c/table>"}],"items":[{"id":"q2-7","type":"problem","stem":"סדרת טלוויזיה מחולקת לכמה עונות, ובכל עונה 13 פרקים. לאיזו עונה שייך הפרק ה־120 בסדרה?","options":["9","10","11","12"],"answer":2},{"id":"q2-8","type":"problem","stem":"כמה מחלקים זוגיים יש למספר 40 (לא כולל 40 עצמו)?","options":["5","8","3","4"],"answer":1},{"id":"q2-16","type":"figure_question","stimulusId":"q2t1","stem":"בבחירה אקראית, הסיכוי הגבוה ביותר למצוא שזיף שאינו נגוע הוא בבחירה מתוך השזיפים מזן ______ בחלקה ______.","options":["A ; ז","B ; ד","C ; ה","D ; ו"],"answer":1},{"id":"q2-17","type":"figure_question","stimulusId":"q2t1","stem":"בסוף שנת 2020 הניבו עצי השזיף בחלקה ה בסך הכול 600 שזיפים מזן מסוים. 400 מתוכם היו נגועים. באיזה זן שזיפים מדובר?","options":["A","B","C","D"],"answer":2}]},{"id":"e1","domain":"english","title":"English — Section One","subtitle":"Sentence Completions, Restatements, Reading Comprehension","stimuli":[{"id":"e1p1","kind":"reading_passage","title":"Text I — Unusual Post Offices","body":"In today's world of fast, efficient communication such as email and WhatsApp, why would anyone bother with stamps and envelopes? Indeed, \"snail mail\" — as the regular postal system is often called — may eventually become obsolete. Some post offices have radically streamlined the services they provide or have closed altogether. However, a few are flourishing — thanks to their surprising locations.\n\nOne of the most unusual post offices is found in Vanuatu, a country comprising many islands in the South Pacific Ocean. Located in Hideaway Island Marine Sanctuary, the world's first underwater post office lies fifty meters offshore and three meters below the water's surface. A flag flown above the site announces when the postal workers — trained divers who swim to work wearing scuba equipment — are on duty. An estimated 100,000 tourists have used the post office since its opening in 2003. Visitors who choose to dive can purchase waterproof postcards on shore and swim out to mail them (non-divers have the option of placing them in a mailbox located in a hotel). Vanuatu Post encourages visitors to literally look below the surface.\n\nAnother postal facility that owes its fame to its location is the Penguin Post Office, the most popular tourist attraction in Antarctica. Run by the United Kingdom Antarctic Heritage Trust, the world's southernmost post office is situated at Port Lockroy, on tiny Wiencke Island, 1100 kilometers from the tip of South America. The post office operates only during the four months of summer, when thousands of tourists arrive on cruise ships. The four-person staff is replaced every year. Despite the remote location, cold weather, minimal salary, and crude living conditions, more than fifty people eagerly apply each year to the Heritage Trust for the privilege of undergoing this singular experience.","dir":"ltr"}],"items":[{"id":"e1-1","type":"sentence_completion","dir":"ltr","stem":"Jackals can live up to 10 years in the wild and up to 16 years in _____.","options":["anxiety","severity","captivity","royalty"],"answer":3},{"id":"e1-2","type":"sentence_completion","dir":"ltr","stem":"Landscape architect Hoichi Kurisu _____ nearly two years of his life to designing the Morikami Museum and Japanese Gardens in Delray Beach, Florida.","options":["devoted","exposed","composed","obeyed"],"answer":1},{"id":"e1-9","type":"restatement","dir":"ltr","instruction":"Choose the restatement which best expresses the meaning of the original sentence.","stem":"Katie Mulcahey was the only person fined for violating a short-lived 1908 New York City ordinance that prohibited women from smoking in public.","options":["New York City's 1908 ban against women smoking in public was overturned shortly after Katie Mulcahey was fined for violating the law.","Katie Mulcahey was the first person – but not the last – to defy a New York City law that made it illegal for women to smoke in public.","In 1908, Katie Mulcahey was fined for protesting against a New York City regulation barring women from smoking in public.","During the brief time that New York City banned women from smoking in public, just one person – Katie Mulcahey – was fined for breaking the law."],"answer":4},{"id":"e1-13","type":"reading_question","stimulusId":"e1p1","dir":"ltr","stem":"What do the two post offices described in the text have in common?","options":["They are in convenient locations.","They provide a unique experience.","They may soon have to close.","They have streamlined their services."],"answer":2},{"id":"e1-14","type":"reading_question","stimulusId":"e1p1","dir":"ltr","stem":"In line 3, \"become obsolete\" is closest in meaning to -","options":["greatly improve","no longer exist","spread to new places","look different"],"answer":2}]}]};</script>
+<script>"use strict";
+(() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+
+  // src/domain/errors.ts
+  var InvalidBankError = class extends Error {
+    constructor(problems) {
+      super(`\u05D4\u05D1\u05E0\u05E7 \u05D0\u05D9\u05E0\u05D5 \u05EA\u05E7\u05D9\u05DF (${problems.length} \u05D1\u05E2\u05D9\u05D5\u05EA).`);
+      __publicField(this, "problems");
+      this.name = "InvalidBankError";
+      this.problems = problems;
+    }
+  };
+
+  // src/domain/rules/blueprints.ts
+  var BLUEPRINTS = {
+    standard: {
+      verbal: {
+        chapters: 2,
+        analogy: 6,
+        sentence_completion: 5,
+        logic: 7,
+        reading_passage: 2,
+        reading_question: 6
+      },
+      quantitative: { chapters: 2, problem: 15, figure: 2, figure_question: 5 },
+      english: {
+        chapters: 2,
+        sentence_completion: 10,
+        restatement: 7,
+        reading_passage: 2,
+        reading_question: 7
+      }
+    },
+    // Half-length dry run: same proportions, roughly half the clock.
+    half: {
+      verbal: {
+        chapters: 1,
+        analogy: 3,
+        sentence_completion: 3,
+        logic: 4,
+        reading_passage: 1,
+        reading_question: 3
+      },
+      quantitative: { chapters: 1, problem: 8, figure: 1, figure_question: 3 },
+      english: {
+        chapters: 1,
+        sentence_completion: 5,
+        restatement: 4,
+        reading_passage: 1,
+        reading_question: 4
+      }
+    },
+    full: null
+  };
+  function isBlueprintName(value) {
+    return Object.prototype.hasOwnProperty.call(BLUEPRINTS, value);
+  }
+
+  // src/domain/rules/rulebook.ts
+  var RULES = {
+    time: {
+      verbal: {
+        analogy: 90,
+        // אנלוגיה                        1.5 דק'
+        reading_passage: 420,
+        // קטע קריאה (זמן קריאה)            7 דק'
+        reading_question: 240,
+        // שאלה על קטע קריאה                4 דק'
+        logic: 240,
+        // שאלת הבנה והסקה                  4 דק'
+        sentence_completion: 180
+        // השלמת משפטים                    3 דק'
+      },
+      quantitative: {
+        problem: 240,
+        // שאלות ובעיות                    4 דק'
+        figure: 300,
+        // עיון בתרשים/טבלה                5 דק'
+        figure_question: 240
+        // שאלת הסקה מתרשים/טבלה            4 דק'
+      },
+      english: {
+        sentence_completion: 120,
+        // השלמת משפטים                    2 דק'
+        reading_passage: 420,
+        // קטע קריאה                       7 דק'
+        reading_question: 240,
+        // שאלה על קטע קריאה                4 דק'
+        restatement: 240
+        // ניסוח מחדש                      4 דק'
+      }
+    },
+    writing: { defaultMinutes: 30, allowedMinutes: [30, 35, 40, 45], minLines: 25 },
+    breaks: {
+      majorSeconds: 300,
+      // 5 min
+      microSeconds: 150,
+      // 2.5 min
+      skippable: true
+    },
+    behaviour: {
+      allowBack: false,
+      allowEarlyAdvance: true,
+      autoAdvanceOnTimeout: true,
+      keepStimulusVisible: true
+    },
+    domainOrder: ["writing", "verbal", "quantitative", "english"],
+    // "לא תמיד אפשר להניח להיבחן במשך יותר מחמש שעות וחצי"
+    session: { maxSeconds: 5.5 * 3600, typicalSeconds: 3.5 * 3600 }
+  };
+
+  // src/domain/rules/taxonomy.ts
+  var TYPE_ORDER = {
+    verbal: ["analogy", "sentence_completion", "logic", "reading_passage"],
+    quantitative: ["problem", "figure"],
+    english: ["sentence_completion", "restatement", "reading_passage"]
+  };
+  var STIMULUS_TYPES = {
+    reading_passage: { domains: ["verbal", "english"], childType: "reading_question" },
+    figure: { domains: ["quantitative"], childType: "figure_question" }
+  };
+  var DEFAULT_STIMULUS_KIND = "reading_passage";
+  function stimulusSpec(kind) {
+    return Object.prototype.hasOwnProperty.call(STIMULUS_TYPES, kind) ? STIMULUS_TYPES[kind] : null;
+  }
+  function requiresStimulus(type) {
+    return type === "reading_question" || type === "figure_question";
+  }
+
+  // src/domain/services/bank-validator.ts
+  function asRecord(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+  }
+  function asArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
+  function str(value) {
+    return typeof value === "string" ? value : "";
+  }
+  function validateBank(bank, rules = RULES) {
+    const problems = [];
+    const at = (where, message) => problems.push({ where, message });
+    const root = asRecord(bank);
+    if (!root) {
+      at("bank", "\u05D4\u05D1\u05E0\u05E7 \u05E8\u05D9\u05E7 \u05D0\u05D5 \u05D0\u05D9\u05E0\u05D5 \u05D0\u05D5\u05D1\u05D9\u05D9\u05E7\u05D8.");
+      return problems;
+    }
+    const sections = Array.isArray(root.sections) ? root.sections : null;
+    if (!sections || !sections.length) at("bank.sections", "\u05D7\u05E1\u05E8\u05D9\u05DD \u05E4\u05E8\u05E7\u05D9\u05DD.");
+    const writingTask = asRecord(root.writingTask);
+    if (writingTask) {
+      const minutes = writingTask.minutes;
+      if (minutes != null && !rules.writing.allowedMinutes.includes(minutes))
+        at(
+          "writingTask.minutes",
+          `\u05D6\u05DE\u05DF \u05DB\u05EA\u05D9\u05D1\u05D4 ${minutes} \u05D0\u05D9\u05E0\u05D5 \u05D0\u05D7\u05D3 \u05DE\u05BE${rules.writing.allowedMinutes.join("/")}.`
+        );
+      if (!writingTask.prompt) at("writingTask.prompt", "\u05D7\u05E1\u05E8\u05D4 \u05DE\u05D8\u05DC\u05EA \u05D4\u05DB\u05EA\u05D9\u05D1\u05D4.");
+    }
+    const seenIds = /* @__PURE__ */ new Set();
+    (sections ?? []).forEach((rawSection, si) => {
+      const section = asRecord(rawSection) ?? {};
+      const sectionId = str(section.id);
+      const where = `sections[${si}]${sectionId ? ` (${sectionId})` : ""}`;
+      const domain = str(section.domain);
+      const timeTable = rules.time[domain];
+      if (!domain || !timeTable) at(where, "domain \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05D9\u05D5\u05EA verbal / quantitative / english.");
+      const items = asArray(section.items);
+      if (!Array.isArray(section.items) || !items.length) at(where, "\u05DC\u05E4\u05E8\u05E7 \u05D0\u05D9\u05DF \u05E9\u05D0\u05DC\u05D5\u05EA.");
+      const stimulusIds = /* @__PURE__ */ new Set();
+      asArray(section.stimuli).forEach((rawStimulus, ti) => {
+        const stimulus = asRecord(rawStimulus) ?? {};
+        const stimulusWhere = `${where}.stimuli[${ti}]`;
+        const id = str(stimulus.id);
+        if (!id) at(stimulusWhere, "\u05DC\u05D2\u05D9\u05E8\u05D5\u05D9 \u05D7\u05E1\u05E8 id.");
+        else if (stimulusIds.has(id)) at(stimulusWhere, `id \u05DB\u05E4\u05D5\u05DC: ${id}.`);
+        stimulusIds.add(id);
+        const kind = str(stimulus.kind) || DEFAULT_STIMULUS_KIND;
+        const spec = stimulusSpec(kind);
+        if (!spec) at(stimulusWhere, `kind \u05DC\u05D0 \u05DE\u05D5\u05DB\u05E8: ${kind}.`);
+        else if (!spec.domains.includes(domain))
+          at(stimulusWhere, `${kind} \u05DC\u05D0 \u05E7\u05D9\u05D9\u05DD \u05D1\u05EA\u05D7\u05D5\u05DD ${domain}.`);
+        if (!stimulus.body && !stimulus.html && !stimulus.image)
+          at(stimulusWhere, "\u05DC\u05D2\u05D9\u05E8\u05D5\u05D9 \u05D0\u05D9\u05DF \u05EA\u05D5\u05DB\u05DF (body / html / image).");
+      });
+      items.forEach((rawItem, ii) => {
+        const item = asRecord(rawItem) ?? {};
+        const id = str(item.id);
+        const itemWhere = `${where}.items[${ii}]${id ? ` (${id})` : ""}`;
+        if (!id) at(itemWhere, "\u05DC\u05E9\u05D0\u05DC\u05D4 \u05D7\u05E1\u05E8 id.");
+        else if (seenIds.has(id)) at(itemWhere, `id \u05DB\u05E4\u05D5\u05DC \u05D1\u05DB\u05DC \u05D4\u05D1\u05D7\u05D9\u05E0\u05D4: ${id}.`);
+        seenIds.add(id);
+        const type = str(item.type);
+        if (!type) at(itemWhere, "\u05DC\u05E9\u05D0\u05DC\u05D4 \u05D7\u05E1\u05E8 type.");
+        else if (!timeTable || timeTable[type] == null)
+          at(itemWhere, `type "${type}" \u05D0\u05D9\u05E0\u05D5 \u05E7\u05D9\u05D9\u05DD \u05D1\u05EA\u05D7\u05D5\u05DD ${domain}.`);
+        if (!item.stem) at(itemWhere, "\u05D7\u05E1\u05E8 \u05D2\u05D5\u05E3 \u05E9\u05D0\u05DC\u05D4 (stem).");
+        if (!Array.isArray(item.options) || item.options.length !== 4)
+          at(itemWhere, "\u05E6\u05E8\u05D9\u05DA \u05D1\u05D3\u05D9\u05D5\u05E7 4 \u05DE\u05E1\u05D9\u05D7\u05D9\u05DD.");
+        const answer = item.answer;
+        if (!(typeof answer === "number" && answer >= 1 && answer <= 4))
+          at(itemWhere, "answer \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05D9\u05D5\u05EA 1\u20134.");
+        const stimulusId = str(item.stimulusId);
+        if (requiresStimulus(type) && !stimulusId)
+          at(itemWhere, `\u05E9\u05D0\u05DC\u05D4 \u05DE\u05E1\u05D5\u05D2 ${type} \u05D7\u05D9\u05D9\u05D1\u05EA stimulusId.`);
+        if (stimulusId && !stimulusIds.has(stimulusId))
+          at(itemWhere, `stimulusId \u05DC\u05D0 \u05E7\u05D9\u05D9\u05DD \u05D1\u05E4\u05E8\u05E7: ${stimulusId}.`);
+      });
+    });
+    return problems;
+  }
+
+  // src/domain/rules/labels.ts
+  var DOMAIN_LABELS = {
+    writing: "\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4",
+    verbal: "\u05D7\u05E9\u05D9\u05D1\u05D4 \u05DE\u05D9\u05DC\u05D5\u05DC\u05D9\u05EA",
+    quantitative: "\u05D7\u05E9\u05D9\u05D1\u05D4 \u05DB\u05DE\u05D5\u05EA\u05D9\u05EA",
+    english: "\u05D0\u05E0\u05D2\u05DC\u05D9\u05EA"
+  };
+  var TYPE_LABELS = {
+    analogy: "\u05D0\u05E0\u05DC\u05D5\u05D2\u05D9\u05D4",
+    reading_passage: "\u05E7\u05D8\u05E2 \u05E7\u05E8\u05D9\u05D0\u05D4",
+    reading_question: "\u05E9\u05D0\u05DC\u05D4 \u05E2\u05DC \u05E7\u05D8\u05E2 \u05E7\u05E8\u05D9\u05D0\u05D4",
+    logic: "\u05E9\u05D0\u05DC\u05EA \u05D4\u05D1\u05E0\u05D4 \u05D5\u05D4\u05E1\u05E7\u05D4",
+    sentence_completion: "\u05D4\u05E9\u05DC\u05DE\u05EA \u05DE\u05E9\u05E4\u05D8\u05D9\u05DD",
+    problem: "\u05E9\u05D0\u05DC\u05D5\u05EA \u05D5\u05D1\u05E2\u05D9\u05D5\u05EA",
+    figure: "\u05E2\u05D9\u05D5\u05DF \u05D1\u05EA\u05E8\u05E9\u05D9\u05DD/\u05D8\u05D1\u05DC\u05D4",
+    figure_question: "\u05E9\u05D0\u05DC\u05EA \u05D4\u05E1\u05E7\u05D4 \u05DE\u05EA\u05E8\u05E9\u05D9\u05DD/\u05D8\u05D1\u05DC\u05D4",
+    restatement: "\u05E0\u05D9\u05E1\u05D5\u05D7 \u05DE\u05D7\u05D3\u05E9"
+  };
+  var CHAPTER_ORDINALS = ["\u05E8\u05D0\u05E9\u05D5\u05DF", "\u05E9\u05E0\u05D9", "\u05E9\u05DC\u05D9\u05E9\u05D9", "\u05E8\u05D1\u05D9\u05E2\u05D9"];
+  function domainLabel(domain) {
+    return DOMAIN_LABELS[domain] ?? domain;
+  }
+  function typeLabel(type) {
+    return TYPE_LABELS[type] ?? type;
+  }
+
+  // src/domain/support/objects.ts
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+  function isPlainObject(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+  function deepMerge(base, patch) {
+    if (!isPlainObject(patch)) return base;
+    const target = base;
+    for (const key of Object.keys(patch)) {
+      const next = patch[key];
+      if (isPlainObject(next)) {
+        const current = isPlainObject(target[key]) ? target[key] : {};
+        target[key] = deepMerge(current, next);
+      } else {
+        target[key] = next;
+      }
+    }
+    return base;
+  }
+
+  // src/domain/services/grouping.ts
+  function groupSeconds(group, domain, rules) {
+    const table = rules.time[domain];
+    let total = 0;
+    if (group.kind === "stimulus" && group.stimulus) {
+      total += group.stimulus.seconds ?? table[group.type] ?? 0;
+    }
+    for (const item of group.items) total += item.seconds ?? table[item.type] ?? 0;
+    return total;
+  }
+  function withSeconds(group, domain, rules) {
+    return { ...group, seconds: groupSeconds(group, domain, rules) };
+  }
+  function poolGroups(bank, domain, rules) {
+    const groups = [];
+    for (const section of bank.sections ?? []) {
+      if (section.domain !== domain) continue;
+      const byStimulus = /* @__PURE__ */ new Map();
+      for (const stimulus of section.stimuli ?? []) {
+        byStimulus.set(stimulus.id, {
+          kind: "stimulus",
+          type: stimulus.kind ?? DEFAULT_STIMULUS_KIND,
+          stimulus,
+          items: [],
+          sectionId: section.id
+        });
+      }
+      for (const item of section.items ?? []) {
+        const parent = item.stimulusId ? byStimulus.get(item.stimulusId) : void 0;
+        if (parent) parent.items.push(item);
+        else
+          groups.push({
+            kind: "single",
+            type: item.type,
+            stimulus: null,
+            items: [item],
+            sectionId: section.id
+          });
+      }
+      for (const group of byStimulus.values()) if (group.items.length) groups.push(group);
+    }
+    return groups.map((group) => withSeconds(group, domain, rules));
+  }
+
+  // src/domain/services/random.ts
+  function sample(pool, count, random) {
+    if (count >= pool.length) return pool.slice();
+    const shuffled = pool.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(random.next() * (i + 1));
+      const swap = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = swap;
+    }
+    return shuffled.slice(0, count);
+  }
+
+  // src/domain/services/selection.ts
+  function selectGroups(groups, blueprint, domain, rules, random, notes) {
+    if (!blueprint) return groups;
+    const chosen = [];
+    for (const type of TYPE_ORDER[domain] ?? []) {
+      const want = blueprint[type] ?? 0;
+      if (!want) continue;
+      const available = groups.filter((group) => group.type === type);
+      const spec = type in STIMULUS_TYPES ? stimulusSpec(type) : null;
+      if (!spec) {
+        const taken = sample(available, want, random);
+        if (taken.length < want)
+          notes.push(
+            `${domain}: \u05D1\u05D9\u05E7\u05E9\u05EA ${want} \xD7 ${typeLabel(type)}, \u05D1\u05D1\u05E0\u05E7 \u05D9\u05E9 ${taken.length}.`
+          );
+        chosen.push(...taken);
+        continue;
+      }
+      const questionsWanted = blueprint[spec.childType] ?? 0;
+      const stimuli = sample(available, want, random);
+      if (stimuli.length < want)
+        notes.push(`${domain}: \u05D1\u05D9\u05E7\u05E9\u05EA ${want} \xD7 ${typeLabel(type)}, \u05D1\u05D1\u05E0\u05E7 \u05D9\u05E9 ${stimuli.length}.`);
+      if (!stimuli.length) continue;
+      const per = Math.floor(questionsWanted / stimuli.length);
+      const extra = questionsWanted % stimuli.length;
+      let drawn = 0;
+      stimuli.forEach((group, i) => {
+        const take = per + (i < extra ? 1 : 0);
+        const kept = sample(group.items, take, random);
+        drawn += kept.length;
+        const trimmed = {
+          kind: "stimulus",
+          type: group.type,
+          stimulus: group.stimulus,
+          items: kept,
+          sectionId: group.sectionId
+        };
+        chosen.push({ ...trimmed, seconds: groupSeconds(trimmed, domain, rules) });
+      });
+      if (drawn < questionsWanted)
+        notes.push(
+          `${domain}: \u05D1\u05D9\u05E7\u05E9\u05EA ${questionsWanted} \u05E9\u05D0\u05DC\u05D5\u05EA \u05E2\u05DC ${typeLabel(type)}, \u05D1\u05D1\u05E0\u05E7 \u05D9\u05E9 ${drawn}.`
+        );
+    }
+    return chosen;
+  }
+  function intoChapters(groups, chapterCount, domain) {
+    const n = Math.max(1, chapterCount || 1);
+    const chapters = Array.from({ length: n }, () => []);
+    const byType = /* @__PURE__ */ new Map();
+    for (const group of groups) {
+      const bucket = byType.get(group.type);
+      if (bucket) bucket.push(group);
+      else byType.set(group.type, [group]);
+    }
+    for (const bucket of byType.values())
+      bucket.forEach((group, i) => chapters[i % n].push(group));
+    const order = TYPE_ORDER[domain] ?? [];
+    for (const chapter of chapters) {
+      const dealt = new Map(chapter.map((group, i) => [group, i]));
+      chapter.sort((a, b) => {
+        const byOrder = order.indexOf(a.type) - order.indexOf(b.type);
+        return byOrder !== 0 ? byOrder : dealt.get(a) - dealt.get(b);
+      });
+    }
+    return chapters.filter((chapter) => chapter.length > 0);
+  }
+
+  // src/domain/services/summary.ts
+  function summarize(steps) {
+    const totals = {
+      totalSeconds: 0,
+      breakSeconds: 0,
+      byDomain: {},
+      counts: { items: 0, stimuli: 0, breaks: 0 }
+    };
+    for (const step of steps) {
+      const seconds = step.seconds ?? 0;
+      totals.totalSeconds += seconds;
+      if (step.kind === "break") {
+        totals.breakSeconds += seconds;
+        totals.counts.breaks++;
+        continue;
+      }
+      if (step.kind === "item") totals.counts.items++;
+      if (step.kind === "stimulus") totals.counts.stimuli++;
+      const domain = "domain" in step ? step.domain : void 0;
+      if (!domain) continue;
+      const entry = totals.byDomain[domain] ?? { seconds: 0, items: 0 };
+      entry.seconds += seconds;
+      if (step.kind === "item") entry.items++;
+      totals.byDomain[domain] = entry;
+    }
+    return totals;
+  }
+
+  // src/domain/services/sitting-builder.ts
+  function buildSitting(bank, options, random) {
+    const rules = deepMerge(clone(RULES), options.rules ?? {});
+    const blueprint = options.blueprint ?? null;
+    const notes = [];
+    const steps = [];
+    const push = (step) => {
+      steps.push({ ...step, index: steps.length });
+    };
+    if (bank.writingTask && options.includeWriting !== false) {
+      const minutes = options.writingMinutes || bank.writingTask.minutes || rules.writing.defaultMinutes;
+      push({
+        kind: "writing",
+        domain: "writing",
+        seconds: minutes * 60,
+        prompt: bank.writingTask.prompt,
+        intro: bank.writingTask.intro ?? null,
+        minLines: bank.writingTask.minLines ?? rules.writing.minLines
+      });
+      push({ kind: "break", seconds: rules.breaks.majorSeconds, label: "\u05D4\u05E4\u05E1\u05E7\u05D4", after: "writing" });
+    }
+    const domains = rules.domainOrder.filter(
+      (domain) => domain !== "writing" && (bank.sections ?? []).some((s) => s.domain === domain)
+    );
+    domains.forEach((domain, di) => {
+      const domainBlueprint = blueprint ? blueprint[domain] : null;
+      const pool = poolGroups(bank, domain, rules);
+      const chosen = selectGroups(pool, domainBlueprint, domain, rules, random, notes);
+      const chapters = intoChapters(
+        chosen,
+        domainBlueprint ? domainBlueprint.chapters : options.chapters ?? 1,
+        domain
+      );
+      chapters.forEach((chapter, ci) => {
+        if (ci > 0)
+          push({
+            kind: "break",
+            seconds: rules.breaks.microSeconds,
+            label: "\u05D4\u05E4\u05E1\u05E7\u05D4",
+            after: "chapter"
+          });
+        const sectionId = `${domain}-${ci + 1}`;
+        const itemCount = chapter.reduce((n, group) => n + group.items.length, 0);
+        push({
+          kind: "section-intro",
+          domain,
+          sectionId,
+          title: DOMAIN_LABELS[domain] + (chapters.length > 1 ? ` \u2014 \u05E4\u05E8\u05E7 ${CHAPTER_ORDINALS[ci]}` : ""),
+          subtitle: chapterSubtitle(chapter),
+          itemCount,
+          seconds: options.introSeconds ?? 30
+        });
+        for (const group of chapter) {
+          if (group.kind === "stimulus" && group.stimulus) {
+            const stimulus = group.stimulus;
+            push({
+              kind: "stimulus",
+              domain,
+              sectionId,
+              stimulusId: stimulus.id,
+              stimulusKind: group.type,
+              seconds: stimulus.seconds ?? rules.time[domain][group.type] ?? 0,
+              title: stimulus.title ?? typeLabel(group.type),
+              body: stimulus.body ?? null,
+              html: stimulus.html ?? null,
+              image: stimulus.image ?? null,
+              dir: stimulus.dir ?? null
+            });
+          }
+          for (const item of group.items) {
+            push({
+              kind: "item",
+              domain,
+              sectionId,
+              itemId: item.id,
+              type: item.type,
+              seconds: item.seconds ?? rules.time[domain][item.type] ?? 0,
+              stem: item.stem,
+              instruction: item.instruction ?? null,
+              options: item.options,
+              answer: item.answer,
+              stimulusId: group.stimulus ? group.stimulus.id : null,
+              image: item.image ?? null,
+              dir: item.dir ?? null,
+              scored: item.scored !== false
+              // "הפריט אינו נכלל בחישוב הציון"
+            });
+          }
+        }
+      });
+      if (di < domains.length - 1)
+        push({ kind: "break", seconds: rules.breaks.majorSeconds, label: "\u05D4\u05E4\u05E1\u05E7\u05D4", after: "domain" });
+    });
+    push({ kind: "end" });
+    const totals = summarize(steps);
+    const summary = {
+      ...totals,
+      maxSeconds: rules.session.maxSeconds,
+      overBudget: totals.totalSeconds > rules.session.maxSeconds,
+      notes
+    };
+    return {
+      meta: clone(bank.meta ?? {}),
+      rules,
+      blueprint,
+      seed: options.seed ?? null,
+      steps,
+      summary
+    };
+  }
+  function chapterSubtitle(chapter) {
+    const seen = [];
+    for (const group of chapter)
+      for (const item of group.items)
+        if (!seen.includes(item.type)) seen.push(item.type);
+    return seen.map(typeLabel).join(" \xB7 ");
+  }
+
+  // src/application/use-cases/build-sitting.ts
+  function resolveBlueprint(blueprint) {
+    if (blueprint == null) return null;
+    if (typeof blueprint === "string")
+      return isBlueprintName(blueprint) ? BLUEPRINTS[blueprint] : null;
+    return blueprint;
+  }
+  var BuildSittingUseCase = class {
+    constructor(randomFactory) {
+      __publicField(this, "randomFactory");
+      this.randomFactory = randomFactory;
+    }
+    /** @throws InvalidBankError when the bank does not validate. */
+    execute(request) {
+      const problems = validateBank(request.bank);
+      if (problems.length) throw new InvalidBankError(problems);
+      return buildSitting(
+        request.bank,
+        {
+          blueprint: resolveBlueprint(request.blueprint),
+          seed: request.seed ?? null,
+          ...request.includeWriting === void 0 ? {} : { includeWriting: request.includeWriting },
+          ...request.writingMinutes === void 0 ? {} : { writingMinutes: request.writingMinutes },
+          ...request.chapters === void 0 ? {} : { chapters: request.chapters },
+          ...request.introSeconds === void 0 ? {} : { introSeconds: request.introSeconds },
+          ...request.rules === void 0 ? {} : { rules: request.rules }
+        },
+        this.randomFactory(request.seed)
+      );
+    }
+  };
+
+  // src/domain/rules/scales.ts
+  var SCALE = {
+    verbal: [
+      50,
+      51,
+      53,
+      55,
+      57,
+      59,
+      61,
+      63,
+      65,
+      67,
+      69,
+      71,
+      73,
+      76,
+      78,
+      80,
+      82,
+      85,
+      87,
+      90,
+      92,
+      94,
+      97,
+      99,
+      102,
+      104,
+      106,
+      109,
+      111,
+      114,
+      116,
+      118,
+      121,
+      123,
+      126,
+      128,
+      130,
+      133,
+      135,
+      138,
+      140,
+      142,
+      143,
+      145,
+      146,
+      148,
+      150
+    ],
+    quantitative: [
+      50,
+      52,
+      54,
+      56,
+      58,
+      61,
+      64,
+      67,
+      70,
+      73,
+      76,
+      78,
+      81,
+      83,
+      86,
+      88,
+      90,
+      93,
+      95,
+      98,
+      100,
+      102,
+      104,
+      107,
+      109,
+      111,
+      114,
+      116,
+      119,
+      121,
+      124,
+      126,
+      129,
+      131,
+      134,
+      136,
+      138,
+      141,
+      144,
+      147,
+      150
+    ],
+    english: [
+      50,
+      52,
+      54,
+      56,
+      58,
+      60,
+      62,
+      65,
+      68,
+      71,
+      74,
+      76,
+      78,
+      81,
+      83,
+      85,
+      87,
+      89,
+      91,
+      93,
+      95,
+      97,
+      99,
+      101,
+      103,
+      105,
+      107,
+      109,
+      112,
+      114,
+      116,
+      118,
+      120,
+      123,
+      125,
+      127,
+      129,
+      131,
+      134,
+      136,
+      138,
+      141,
+      144,
+      147,
+      150
+    ]
+  };
+  var GENERAL_BANDS = [
+    [50, 50, 200, 200],
+    [51, 55, 221, 248],
+    [56, 60, 249, 276],
+    [61, 65, 277, 304],
+    [66, 70, 305, 333],
+    [71, 75, 334, 361],
+    [76, 80, 362, 389],
+    [81, 85, 390, 418],
+    [86, 90, 419, 446],
+    [91, 95, 447, 474],
+    [96, 100, 475, 503],
+    [101, 105, 504, 531],
+    [106, 110, 532, 559],
+    [111, 115, 560, 587],
+    [116, 120, 588, 616],
+    [121, 125, 617, 644],
+    [126, 130, 645, 672],
+    [131, 135, 673, 701],
+    [136, 140, 702, 729],
+    [141, 145, 730, 761],
+    [146, 149, 762, 795],
+    [150, 150, 800, 800]
+  ];
+
+  // src/domain/services/scoring-service.ts
+  function toUniform(domain, raw) {
+    const table = SCALE[domain];
+    return table[Math.max(0, Math.min(table.length - 1, raw))];
+  }
+  function toGeneralScore(weighted) {
+    const w = Math.max(50, Math.min(150, weighted));
+    for (const [lo, hi, generalLo, generalHi] of GENERAL_BANDS) {
+      if (w > hi) continue;
+      if (lo === hi) return generalLo;
+      const t = Math.max(0, Math.min(1, (w - lo) / (hi + 1 - lo)));
+      return Math.round(generalLo + t * (generalHi - generalLo));
+    }
+    return GENERAL_BANDS[GENERAL_BANDS.length - 1][3];
+  }
+  function score(sitting, responses) {
+    const raw = { verbal: 0, quantitative: 0, english: 0 };
+    const attempted = { verbal: 0, quantitative: 0, english: 0 };
+    const detail = [];
+    for (const step of sitting.steps) {
+      if (step.kind !== "item") continue;
+      const given = responses[step.itemId] ?? null;
+      const correct = given === step.answer;
+      if (step.scored) {
+        attempted[step.domain]++;
+        if (correct) raw[step.domain]++;
+      }
+      detail.push({
+        itemId: step.itemId,
+        domain: step.domain,
+        type: step.type,
+        given,
+        answer: step.answer,
+        correct,
+        scored: step.scored
+      });
+    }
+    const V = toUniform("verbal", raw.verbal);
+    const Q = toUniform("quantitative", raw.quantitative);
+    const E = toUniform("english", raw.english);
+    const composites = {
+      multi: (2 * V + 2 * Q + E) / 5,
+      verbalEmphasis: (3 * V + Q + E) / 5,
+      quantEmphasis: (3 * Q + V + E) / 5
+    };
+    return {
+      raw,
+      attempted,
+      uniform: { verbal: V, quantitative: Q, english: E },
+      composites,
+      general: {
+        multi: toGeneralScore(composites.multi),
+        verbalEmphasis: toGeneralScore(composites.verbalEmphasis),
+        quantEmphasis: toGeneralScore(composites.quantEmphasis)
+      },
+      detail
+    };
+  }
+
+  // src/application/use-cases/score-attempt.ts
+  var ScoreAttemptUseCase = class {
+    execute(request) {
+      return {
+        meta: request.sitting.meta,
+        responses: request.responses,
+        spent: request.spent ?? {},
+        essay: request.essay ?? "",
+        score: score(request.sitting, request.responses)
+      };
+    }
+  };
+
+  // src/infrastructure/random/seeded-random.ts
+  function seededRandom(seed) {
+    const text = String(seed == null ? "mapam" : seed);
+    let state = 2166136261 >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      state ^= text.charCodeAt(i);
+      state = Math.imul(state, 16777619) >>> 0;
+    }
+    return {
+      next() {
+        state ^= state << 13;
+        state ^= state >>> 17;
+        state ^= state << 5;
+        state >>>= 0;
+        return state / 4294967296;
+      }
+    };
+  }
+  var seededRandomFactory = seededRandom;
+
+  // src/domain/support/duration.ts
+  function formatDuration(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+    const minutes = Math.floor(total / 60);
+    const rest = total % 60;
+    return `${minutes}:${rest < 10 ? "0" : ""}${rest}`;
+  }
+  function minutesOf(seconds) {
+    return Math.round(seconds / 60);
+  }
+
+  // src/infrastructure/web/dom-chrome.ts
+  var RADIUS = 33;
+  var CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  var WARM_AT = 0.45;
+  var LATE_AT = 0.18;
+  var DomChrome = class {
+    constructor(dial, arc, clock, rail) {
+      __publicField(this, "dial");
+      __publicField(this, "arc");
+      __publicField(this, "clock");
+      __publicField(this, "rail");
+      this.dial = dial;
+      this.arc = arc;
+      this.clock = clock;
+      this.rail = rail;
+      this.arc.style.strokeDasharray = String(CIRCUMFERENCE);
+    }
+    showTime(remaining, total, visible) {
+      this.dial.classList.toggle("hidden", !visible);
+      if (!visible) return;
+      const left = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
+      this.arc.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - left));
+      this.dial.classList.toggle("warm", left <= WARM_AT && left > LATE_AT);
+      this.dial.classList.toggle("late", left <= LATE_AT);
+      this.clock.textContent = formatDuration(remaining);
+    }
+    showProgress(fraction) {
+      this.rail.style.width = `${Math.min(100, Math.max(0, fraction * 100))}%`;
+    }
+  };
+
+  // src/infrastructure/web/dom-screen.ts
+  var DomScreen = class {
+    constructor(root, doc = document) {
+      __publicField(this, "root");
+      __publicField(this, "doc");
+      this.root = root;
+      this.doc = doc;
+    }
+    render(html) {
+      this.onKey(null);
+      this.root.innerHTML = `<div class="enter">${html}</div>`;
+    }
+    byId(id) {
+      return this.doc.getElementById(id);
+    }
+    all(selector) {
+      return [...this.doc.querySelectorAll(selector)];
+    }
+    onKey(handler) {
+      this.doc.onkeydown = handler;
+    }
+  };
+
+  // src/infrastructure/web/file-bank-reader.ts
+  var BrowserBankFileReader = class {
+    read(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E7\u05E8\u05D5\u05D0 \u05D0\u05EA \u05D4\u05E7\u05D5\u05D1\u05E5."));
+        reader.onload = () => {
+          try {
+            resolve(JSON.parse(String(reader.result)));
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.readAsText(file, "utf-8");
+      });
+    }
+  };
+
+  // src/infrastructure/web/interval-countdown.ts
+  var TICK_MS = 100;
+  var IntervalCountdown = class {
+    constructor() {
+      __publicField(this, "handle", null);
+      __publicField(this, "deadline", 0);
+      __publicField(this, "seconds", 0);
+    }
+    stop() {
+      if (this.handle) clearInterval(this.handle);
+      this.handle = null;
+    }
+    start(seconds, handlers) {
+      this.stop();
+      this.seconds = seconds;
+      this.deadline = Date.now() + seconds * 1e3;
+      this.handle = setInterval(() => {
+        const left = this.remaining();
+        handlers.onTick(left, this.seconds);
+        if (left <= 0) {
+          this.stop();
+          handlers.onExpire();
+        }
+      }, TICK_MS);
+    }
+    remaining() {
+      return Math.max(0, (this.deadline - Date.now()) / 1e3);
+    }
+    total() {
+      return this.seconds;
+    }
+  };
+
+  // src/infrastructure/web/json-file-saver.ts
+  var JsonFileSaver = class {
+    save(filename, payload) {
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // src/presentation/web/html.ts
+  var ENTITIES = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;"
+  };
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/[&<>"]/g, (c) => ENTITIES[c]);
+  }
+  function paragraphs(text) {
+    return esc(text).split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+  }
+  function isHebrew(text) {
+    return /[\u0590-\u05FF]/.test(text ?? "");
+  }
+  function directionOf(explicit, text) {
+    return explicit ?? (isHebrew(text) ? "rtl" : "ltr");
+  }
+  function when(condition, fragment) {
+    return condition ? fragment : "";
+  }
+
+  // src/presentation/web/views/results-view.ts
+  var DOMAINS = [
+    ["verbal", "\u05D7\u05E9\u05D9\u05D1\u05D4 \u05DE\u05D9\u05DC\u05D5\u05DC\u05D9\u05EA"],
+    ["quantitative", "\u05D7\u05E9\u05D9\u05D1\u05D4 \u05DB\u05DE\u05D5\u05EA\u05D9\u05EA"],
+    ["english", "\u05D0\u05E0\u05D2\u05DC\u05D9\u05EA"]
+  ];
+  function renderResults(vm) {
+    const { report } = vm;
+    const present = DOMAINS.filter(([domain]) => report.attempted[domain] > 0);
+    return `
+  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(8dvh,64px)">
+    <header style="text-align:center">
+      <p class="tag">\u05E1\u05D9\u05D9\u05DE\u05EA</p>
+      <h1 style="margin-block:12px 0">\u05D4\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA</h1>
+    </header>
+
+    <div class="stats">
+      ${present.map(
+      ([domain, label]) => `
+        <div class="stat"><div class="k">${label}</div>
+          <div class="v">${report.uniform[domain]}<small> \xB7 ${report.raw[domain]} \u05DE\u05EA\u05D5\u05DA ${report.attempted[domain]}</small></div></div>`
+    ).join("")}
+    </div>
+
+    <div class="card">
+      <h3>\u05D0\u05D5\u05DE\u05D3\u05DF \u05E6\u05D9\u05D5\u05DF \u05DB\u05DC\u05DC\u05D9</h3>
+      <div class="stats" style="margin-block-start:16px">
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">\u05E8\u05D1\u05BE\u05EA\u05D7\u05D5\u05DE\u05D9</div><div class="v">${report.general.multi}</div></div>
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">\u05D3\u05D2\u05E9 \u05DE\u05D9\u05DC\u05D5\u05DC\u05D9</div><div class="v">${report.general.verbalEmphasis}</div></div>
+        <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">\u05D3\u05D2\u05E9 \u05DB\u05DE\u05D5\u05EA\u05D9</div><div class="v">${report.general.quantEmphasis}</div></div>
+      </div>
+      <p class="instruction" style="margin:16px 0 0">\u05D1\u05E1\u05D5\u05DC\u05DD 200\u2013800, \u05DC\u05E4\u05D9 \u05D8\u05D1\u05DC\u05D0\u05D5\u05EA \u05D4\u05D4\u05DE\u05E8\u05D4 \u05E9\u05DC \u05D4\u05DE\u05D5\u05E2\u05D3 \u05D4\u05D6\u05D4. \u05D4\u05D0\u05D5\u05DE\u05D3\u05DF \u05DE\u05E0\u05D9\u05D7 \u05DE\u05D1\u05D7\u05DF \u05DE\u05DC\u05D0 \u05D5\u05D0\u05D9\u05E0\u05D5 \u05DB\u05D5\u05DC\u05DC \u05D0\u05EA \u05DE\u05D8\u05DC\u05EA \u05D4\u05DB\u05EA\u05D9\u05D1\u05D4.</p>
+    </div>
+
+    ${when(
+      vm.essay.trim(),
+      `<div class="card"><h3>\u05D4\u05D7\u05D9\u05D1\u05D5\u05E8 \u05E9\u05DC\u05DA</h3><div class="passage" style="max-height:32dvh">${paragraphs(vm.essay)}</div></div>`
+    )}
+
+    <div>
+      <p class="tag" style="margin-block-end:12px">\u05E9\u05D0\u05DC\u05D4 \u05D0\u05D7\u05E8 \u05E9\u05D0\u05DC\u05D4</p>
+      <table class="review">
+        <thead><tr><th>\u05E9\u05D0\u05DC\u05D4</th><th>\u05E1\u05D5\u05D2</th><th>\u05EA\u05E9\u05D5\u05D1\u05EA\u05DA</th><th>\u05E0\u05DB\u05D5\u05E0\u05D4</th><th>\u05D6\u05DE\u05DF</th></tr></thead>
+        <tbody>${report.detail.map(
+      (d) => `
+          <tr>
+            <td class="n"><span class="dot ${d.given == null ? "na" : d.correct ? "ok" : "no"}"></span>${esc(d.itemId)}</td>
+            <td>${esc(typeLabel(d.type))}</td>
+            <td class="n">${d.given == null ? "\u2014" : d.given}</td>
+            <td class="n">${d.answer}</td>
+            <td class="n">${formatDuration(vm.spent[d.itemId] ?? 0)}</td>
+          </tr>`
+    ).join("")}</tbody>
+      </table>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="again">\u05DC\u05D4\u05E8\u05D9\u05E5 \u05E9\u05D5\u05D1</button>
+      <button class="btn quiet" id="dl">\u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05EA\u05E9\u05D5\u05D1\u05D5\u05EA</button>
+    </div>
+  </div></div>`;
+  }
+
+  // src/presentation/web/views/setup-view.ts
+  function renderSetup(vm) {
+    return `
+  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(11dvh,90px)">
+    <header style="text-align:center">
+      <p class="tag">\u05DE\u05E4\u05E2\u05F4\u05DD \xB7 \u05D1\u05D7\u05D9\u05E0\u05D4 \u05D1\u05D6\u05DE\u05DF \u05E7\u05E6\u05D5\u05D1 \u05DC\u05DB\u05DC \u05E9\u05D0\u05DC\u05D4</p>
+      <h1 style="margin-block:14px 12px">\u05E8\u05D2\u05E2 \u05D0\u05D7\u05D3 \u05DC\u05DB\u05DC \u05E9\u05D0\u05DC\u05D4</h1>
+      <p style="color:var(--muted);max-width:46ch;margin:0 auto">\u05DB\u05DC \u05E9\u05D0\u05DC\u05D4 \u05DE\u05E7\u05D1\u05DC\u05EA \u05D0\u05EA \u05D4\u05D6\u05DE\u05DF \u05E9\u05D4\u05D9\u05D0 \u05DE\u05E7\u05D1\u05DC\u05EA \u05D1\u05DE\u05E4\u05E2\u05F4\u05DD. \u05DB\u05E9\u05D4\u05D6\u05DE\u05DF \u05E0\u05D2\u05DE\u05E8 \u05E2\u05D5\u05D1\u05E8\u05D9\u05DD \u05D4\u05DC\u05D0\u05D4, \u05D5\u05D0\u05D9\u05DF \u05D7\u05D6\u05E8\u05D4 \u05D0\u05D7\u05D5\u05E8\u05D4.</p>
+    </header>
+
+    ${when(vm.message, `<div class="notice warn">${esc(vm.message)}</div>`)}
+
+    <div id="drop" class="drop">
+      <b>\u05D2\u05E8\u05E8\u05D5 \u05DC\u05DB\u05D0\u05DF \u05D1\u05E0\u05E7 \u05E9\u05D0\u05DC\u05D5\u05EA</b><br>
+      <span style="color:var(--muted);font-size:15px">\u05D0\u05D5 \u05DC\u05D7\u05E6\u05D5 \u05DC\u05D1\u05D7\u05D9\u05E8\u05EA \u05E7\u05D5\u05D1\u05E5 JSON</span>
+      <input id="file" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div style="text-align:center;margin-block-start:-8px">
+      <button class="btn quiet" id="demo">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DE\u05D1\u05E0\u05E7 \u05D4\u05D3\u05D5\u05D2\u05DE\u05D4</button>
+    </div>
+
+    ${vm.bank ? vm.problems.length ? renderProblems(vm.problems) : renderReady(vm) : ""}
+  </div></div>`;
+  }
+  function renderProblems(problems) {
+    return `
+      <div class="notice warn">
+        <b>\u05D4\u05D1\u05E0\u05E7 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF (${problems.length}):</b>
+        <ul>${problems.slice(0, 10).map((p) => `<li>${esc(p.message)}</li>`).join("")}</ul>
+      </div>`;
+  }
+  function renderReady(vm) {
+    const preview = vm.preview;
+    if (!preview) return "";
+    const { summary } = preview;
+    const { config } = vm;
+    return `
+      <div class="card">
+        <h3>${esc(vm.bank?.meta?.title ?? "\u05D1\u05E0\u05E7 \u05DC\u05DC\u05D0 \u05E9\u05DD")}</h3>
+        <div class="stats" style="margin-block-start:18px">
+          <div class="stat"><div class="k">\u05E9\u05D0\u05DC\u05D5\u05EA</div><div class="v">${summary.counts.items}</div></div>
+          <div class="stat"><div class="k">\u05E7\u05D8\u05E2\u05D9\u05DD \u05D5\u05EA\u05E8\u05E9\u05D9\u05DE\u05D9\u05DD</div><div class="v">${summary.counts.stimuli}</div></div>
+          <div class="stat"><div class="k">\u05DE\u05E9\u05DA \u05D4\u05DE\u05D5\u05E9\u05D1</div><div class="v">${minutesOf(summary.totalSeconds)}<small> \u05DE\u05EA\u05D5\u05DA ${minutesOf(summary.maxSeconds)} \u05D3\u05E7\u05F3</small></div></div>
+        </div>
+        <div class="field">
+          <label for="bp">\u05D0\u05D5\u05E8\u05DA</label>
+          <select id="bp">
+            <option value="standard"${sel(config.blueprint === "standard")}>\u05DE\u05E4\u05E2\u05F4\u05DD \u05DE\u05DC\u05D0 \u2014 \u05D3\u05D2\u05D9\u05DE\u05D4 \u05DE\u05D4\u05D1\u05E0\u05E7</option>
+            <option value="half"${sel(config.blueprint === "half")}>\u05D7\u05E6\u05D9 \u05D0\u05D5\u05E8\u05DA \u2014 \u05D4\u05E8\u05E6\u05EA \u05D7\u05D9\u05DE\u05D5\u05DD</option>
+            <option value="full"${sel(config.blueprint === "full")}>\u05DB\u05DC \u05DE\u05D4 \u05E9\u05D9\u05E9 \u05D1\u05D1\u05E0\u05E7</option>
+          </select>
+          <label for="seed">\u05D2\u05E8\u05E1\u05D4</label>
+          <input type="text" id="seed" value="${esc(config.seed)}" style="width:70px">
+        </div>
+        <div class="field">
+          <label for="wmin">\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4</label>
+          <select id="wmin">${vm.allowedMinutes.map((m) => `<option value="${m}"${sel(m === config.writingMinutes)}>${m} \u05D3\u05E7\u05D5\u05EA</option>`).join("")}</select>
+          <label><input type="checkbox" id="skipw"${config.includeWriting ? "" : " checked"}> \u05DC\u05D3\u05DC\u05D2 \u05E2\u05DC\u05D9\u05D4</label>
+        </div>
+        ${when(
+      summary.overBudget,
+      `<div class="notice warn" style="margin-block-start:16px">\u05D4\u05DE\u05D5\u05E9\u05D1 \u05D7\u05D5\u05E8\u05D2 \u05DE\u05EA\u05E7\u05E8\u05EA ${minutesOf(summary.maxSeconds)} \u05D4\u05D3\u05E7\u05D5\u05EA. \u05D1\u05D7\u05E8\u05D5 \u05D0\u05D5\u05E8\u05DA \u05E7\u05E6\u05E8 \u05D9\u05D5\u05EA\u05E8.</div>`
+    )}
+        ${when(
+      summary.notes.length,
+      `<div class="notice" style="margin-block-start:16px"><b>\u05D4\u05D1\u05E0\u05E7 \u05E7\u05D8\u05DF \u05DE\u05D4\u05DE\u05EA\u05D5\u05DB\u05E0\u05DF:</b><ul>${summary.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div>`
+    )}
+      </div>
+      <div style="text-align:center"><button class="btn" id="start">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC</button></div>`;
+  }
+  function sel(selected) {
+    return selected ? " selected" : "";
+  }
+
+  // src/presentation/web/views/step-views.ts
+  function renderSectionIntro(step) {
+    return `
+  <div class="bleed">
+    <p class="tag">${esc(domainLabel(step.domain))}</p>
+    <h1>${esc(step.title)}</h1>
+    ${when(
+      step.subtitle,
+      `<p style="color:#8CA096;max-width:44ch;margin:0">${esc(step.subtitle)}</p>`
+    )}
+    <p class="tag">${step.itemCount} \u05E9\u05D0\u05DC\u05D5\u05EA \xB7 \u05DC\u05DB\u05DC \u05D0\u05D7\u05EA \u05D6\u05DE\u05DF \u05DE\u05E9\u05DC\u05D4</p>
+    <button class="btn" id="go">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC</button>
+  </div>`;
+  }
+  function renderBreak(step, skippable) {
+    return `
+  <div class="bleed">
+    <p class="tag">\u05D4\u05E4\u05E1\u05E7\u05D4</p>
+    <div class="breath-wrap">
+      <div class="breath"></div><div class="breath b2"></div>
+      <div class="breath-inner">
+        <div class="big" id="bigclock">${formatDuration(step.seconds)}</div>
+        <p class="tag" style="color:#6E8278">\u05E0\u05E9\u05DE\u05D5 \u05D9\u05D7\u05D3 \u05E2\u05DD \u05D4\u05DE\u05E2\u05D2\u05DC</p>
+      </div>
+    </div>
+    <p style="color:#8CA096;margin:0">\u05D4\u05D1\u05D7\u05D9\u05E0\u05D4 \u05EA\u05DE\u05E9\u05D9\u05DA \u05DE\u05E2\u05E6\u05DE\u05D4 \u05DB\u05E9\u05D4\u05D4\u05E4\u05E1\u05E7\u05D4 \u05EA\u05E1\u05EA\u05D9\u05D9\u05DD.</p>
+    ${when(skippable, `<button class="btn" id="go">\u05DC\u05E7\u05E6\u05E8 \u05D0\u05EA \u05D4\u05D4\u05E4\u05E1\u05E7\u05D4</button>`)}
+  </div>`;
+  }
+  function renderWriting(step) {
+    return `
+  <div class="stage">
+    <div class="topbar"><span class="tag">\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4</span><span class="tag dot">${step.seconds / 60} \u05D3\u05E7\u05D5\u05EA</span></div>
+    <div class="sheet narrow">
+      <div class="card">
+        ${when(step.intro, `<p class="instruction">${esc(step.intro)}</p>`)}
+        <div class="stem">${esc(step.prompt)}</div>
+      </div>
+      <textarea id="essay" placeholder="\u05DB\u05EA\u05D1\u05D5 \u05DB\u05D0\u05DF\u2026" spellcheck="false"></textarea>
+      <div class="meter">
+        <span id="lw">\u05E9\u05D5\u05E8\u05D5\u05EA <b id="lines">0</b> \u05DE\u05EA\u05D5\u05DA ${step.minLines}</span>
+        <span>\u05DE\u05D9\u05DC\u05D9\u05DD <b id="words">0</b></span>
+      </div>
+    </div>
+    <div class="controls"><button class="btn" id="go">\u05E1\u05D9\u05D9\u05DE\u05EA\u05D9</button><span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span></div>
+  </div>`;
+  }
+  function renderStimulusBody(step, maxHeight) {
+    const dir = step.dir ?? (isHebrew((step.body ?? "") + (step.title ?? "")) ? "rtl" : "ltr");
+    return `<div class="passage" dir="${dir}" style="max-height:${maxHeight}">${step.html ?? ""}${step.body ? paragraphs(step.body) : ""}` + when(
+      step.image,
+      `<img src="${esc(step.image)}" alt="" style="max-width:100%;border-radius:var(--r-sm)">`
+    ) + `</div>`;
+  }
+  function renderStimulus(step) {
+    return `
+  <div class="stage">
+    <div class="topbar"><span class="tag">${esc(domainLabel(step.domain))}</span><span class="tag dot">\u05D6\u05DE\u05DF \u05E7\u05E8\u05D9\u05D0\u05D4 \xB7 ${Math.round(step.seconds / 60)} \u05D3\u05E7\u05D5\u05EA</span></div>
+    <div class="sheet narrow"><div class="card"><h3>${esc(step.title)}</h3>${renderStimulusBody(step, "58dvh")}</div></div>
+    <div class="controls"><button class="btn" id="go">\u05E7\u05E8\u05D0\u05EA\u05D9, \u05DC\u05E9\u05D0\u05DC\u05D5\u05EA</button><span class="hint"><kbd>Enter</kbd></span></div>
+  </div>`;
+  }
+  function renderItem(vm) {
+    const { step, stimulus } = vm;
+    const dir = directionOf(step.dir, step.stem);
+    const minutes = step.seconds % 60 ? (step.seconds / 60).toFixed(1) : step.seconds / 60;
+    return `
+  <div class="stage">
+    <div class="topbar">
+      <span class="tag">${esc(domainLabel(step.domain))}</span>
+      <span class="tag dot">${esc(typeLabel(step.type))}</span>
+      <span class="tag dot">${vm.position} \u05DE\u05EA\u05D5\u05DA ${vm.of}</span>
+      <span class="tag dot">${minutes} \u05D3\u05E7\u05F3</span>
+    </div>
+    <div class="sheet${stimulus ? " split" : " narrow"}">
+      ${when(
+      stimulus,
+      stimulus ? `<div class="card"><h3>${esc(stimulus.title)}</h3>${renderStimulusBody(stimulus, "54dvh")}</div>` : ""
+    )}
+      <div class="card">
+        ${when(step.instruction, `<p class="instruction">${esc(step.instruction)}</p>`)}
+        <div class="stem" dir="${dir}">${esc(step.stem)}</div>
+        ${when(
+      step.image,
+      `<img src="${esc(step.image)}" alt="" style="max-width:100%;margin-block-start:20px;border-radius:var(--r-sm)">`
+    )}
+        <div class="options" role="radiogroup">
+          ${step.options.map(
+      (option, i) => `
+            <button class="opt" role="radio" aria-checked="false" data-i="${i + 1}" dir="${dir}">
+              <span class="pip"></span><span class="label">${esc(option)}</span>
+            </button>`
+    ).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="go">\u05D4\u05DE\u05E9\u05DA</button>
+      <span class="hint"><kbd>1</kbd>\u2013<kbd>4</kbd> \u05DC\u05D1\u05D7\u05D9\u05E8\u05D4 \xB7 <kbd>Enter</kbd> \u05DC\u05D4\u05DE\u05E9\u05DA</span>
+    </div>
+  </div>`;
+  }
+
+  // src/presentation/web/runner-controller.ts
+  function once(fn) {
+    let done = false;
+    return () => {
+      if (done) return;
+      done = true;
+      fn();
+    };
+  }
+  var RunnerController = class {
+    constructor(deps) {
+      __publicField(this, "bank", null);
+      __publicField(this, "sitting", null);
+      __publicField(this, "cursor", 0);
+      __publicField(this, "responses", {});
+      __publicField(this, "spent", {});
+      __publicField(this, "essay", "");
+      __publicField(this, "config", defaultConfig());
+      __publicField(this, "deps");
+      this.deps = deps;
+    }
+    /** True while a sitting is under way — drives the "are you sure" guard. */
+    isRunning() {
+      const step = this.sitting?.steps[this.cursor];
+      return !!step && step.kind !== "end";
+    }
+    start() {
+      this.showSetup();
+    }
+    // -- setup ---------------------------------------------------------------
+    showSetup(message = null) {
+      const { screen, chrome, countdown } = this.deps;
+      countdown.stop();
+      chrome.showTime(0, 0, false);
+      chrome.showProgress(0);
+      this.sitting = null;
+      const problems = this.bank ? validateBank(this.bank) : [];
+      const preview = this.bank && !problems.length ? this.buildPreview() : null;
+      screen.render(
+        renderSetup({
+          message,
+          bank: this.bank ?? null,
+          problems,
+          preview,
+          config: this.config,
+          allowedMinutes: RULES.writing.allowedMinutes
+        })
+      );
+      this.bindSetup();
+    }
+    buildPreview() {
+      try {
+        return this.deps.buildSitting.execute({ bank: this.bank, ...this.buildOptions() });
+      } catch {
+        return null;
+      }
+    }
+    buildOptions() {
+      return {
+        blueprint: this.config.blueprint,
+        seed: this.config.seed,
+        writingMinutes: this.config.writingMinutes,
+        includeWriting: this.config.includeWriting
+      };
+    }
+    bindSetup() {
+      const { screen } = this.deps;
+      const drop = screen.byId("drop");
+      const fileInput = screen.byId("file");
+      if (drop && fileInput) {
+        drop.onclick = () => fileInput.click();
+        drop.ondragover = (event) => {
+          event.preventDefault();
+          drop.classList.add("over");
+        };
+        drop.ondragleave = () => drop.classList.remove("over");
+        drop.ondrop = (event) => {
+          event.preventDefault();
+          drop.classList.remove("over");
+          void this.loadFile(event.dataTransfer?.files[0]);
+        };
+        fileInput.onchange = () => void this.loadFile(fileInput.files?.[0]);
+      }
+      const demo = screen.byId("demo");
+      if (demo)
+        demo.onclick = () => {
+          const example = this.deps.exampleBank ?? null;
+          if (!example) return this.showSetup("\u05D0\u05D9\u05DF \u05D1\u05E0\u05E7 \u05D3\u05D5\u05D2\u05DE\u05D4 \u05DE\u05D5\u05D8\u05DE\u05E2 \u05D1\u05E7\u05D5\u05D1\u05E5 \u05D4\u05D6\u05D4.");
+          this.adoptBank(example);
+        };
+      const wmin = screen.byId("wmin");
+      if (wmin)
+        wmin.onchange = () => this.reconfigure({ writingMinutes: Number(wmin.value) });
+      const bp = screen.byId("bp");
+      if (bp) bp.onchange = () => this.reconfigure({ blueprint: bp.value });
+      const seed = screen.byId("seed");
+      if (seed) seed.onchange = () => this.reconfigure({ seed: seed.value });
+      const skip = screen.byId("skipw");
+      if (skip) skip.onchange = () => this.reconfigure({ includeWriting: !skip.checked });
+      const start = screen.byId("start");
+      if (start) start.onclick = () => this.begin();
+    }
+    reconfigure(patch) {
+      this.config = { ...this.config, ...patch };
+      this.showSetup();
+    }
+    async loadFile(file) {
+      if (!file) return;
+      try {
+        this.adoptBank(await this.deps.bankFiles.read(file));
+      } catch (error) {
+        this.showSetup(`\u05D4\u05E7\u05D5\u05D1\u05E5 \u05D0\u05D9\u05E0\u05D5 JSON \u05EA\u05E7\u05D9\u05DF: ${error.message}`);
+      }
+    }
+    adoptBank(bank) {
+      this.bank = bank;
+      this.config = defaultConfig(bank);
+      this.showSetup();
+    }
+    // -- the sitting ---------------------------------------------------------
+    begin() {
+      this.sitting = this.deps.buildSitting.execute({ bank: this.bank, ...this.buildOptions() });
+      this.cursor = 0;
+      this.responses = {};
+      this.spent = {};
+      this.essay = "";
+      this.showStep();
+    }
+    next() {
+      this.cursor++;
+      this.paintProgress();
+      this.showStep();
+    }
+    paintProgress() {
+      if (!this.sitting) return this.deps.chrome.showProgress(0);
+      const done = this.sitting.steps.slice(0, this.cursor).reduce((n, step) => n + (step.seconds ?? 0), 0);
+      this.deps.chrome.showProgress(done / Math.max(1, this.sitting.summary.totalSeconds));
+    }
+    showStep() {
+      this.deps.countdown.stop();
+      const step = this.sitting?.steps[this.cursor];
+      if (!step || step.kind === "end") return this.showResults();
+      switch (step.kind) {
+        case "section-intro":
+          return this.showIntro(step);
+        case "break":
+          return this.showBreak(step);
+        case "writing":
+          return this.showWriting(step);
+        case "stimulus":
+          return this.showStimulus(step);
+        case "item":
+          return this.showItem(step);
+        default:
+          return this.next();
+      }
+    }
+    /** Runs the clock for a step; `visibleDial` is false during breaks. */
+    runClock(seconds, onExpire, visibleDial = true) {
+      this.deps.countdown.start(seconds, {
+        onTick: (remaining, total) => this.deps.chrome.showTime(remaining, total, visibleDial),
+        onExpire
+      });
+      this.deps.chrome.showTime(seconds, seconds, visibleDial);
+    }
+    bindAdvance(advance) {
+      const button = this.deps.screen.byId("go");
+      if (button) button.onclick = advance;
+      this.deps.screen.onKey((event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          advance();
+        }
+      });
+    }
+    showIntro(step) {
+      this.deps.chrome.showTime(0, 0, false);
+      this.deps.screen.render(renderSectionIntro(step));
+      this.bindAdvance(once(() => this.next()));
+    }
+    showBreak(step) {
+      const { screen, countdown } = this.deps;
+      screen.render(renderBreak(step, this.rules().breaks.skippable));
+      const bigClock = screen.byId("bigclock");
+      const advance = once(() => this.next());
+      countdown.start(step.seconds, {
+        onTick: (remaining, total) => {
+          this.deps.chrome.showTime(remaining, total, false);
+          if (bigClock) bigClock.textContent = formatDuration(remaining);
+        },
+        onExpire: advance
+      });
+      this.deps.chrome.showTime(step.seconds, step.seconds, false);
+      this.bindAdvance(advance);
+    }
+    showWriting(step) {
+      const { screen } = this.deps;
+      screen.render(renderWriting(step));
+      const textarea = screen.byId("essay");
+      const words = screen.byId("words");
+      const lines = screen.byId("lines");
+      const meter = screen.byId("lw");
+      const update = () => {
+        this.essay = textarea?.value ?? "";
+        const wordCount = (this.essay.trim().match(/\S+/g) ?? []).length;
+        const lineCount = this.essay.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 62)), 0);
+        if (words) words.textContent = String(wordCount);
+        if (lines) lines.textContent = String(lineCount);
+        meter?.classList.toggle("short", lineCount < step.minLines);
+      };
+      if (textarea) {
+        textarea.oninput = update;
+        textarea.focus();
+      }
+      update();
+      const finish = once(() => {
+        this.essay = textarea?.value ?? this.essay;
+        this.next();
+      });
+      this.runClock(step.seconds, finish);
+      const go = screen.byId("go");
+      if (go) go.onclick = finish;
+      screen.onKey((event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          finish();
+        }
+      });
+    }
+    showStimulus(step) {
+      this.deps.screen.render(renderStimulus(step));
+      const advance = once(() => this.next());
+      this.runClock(step.seconds, advance);
+      this.bindAdvance(advance);
+    }
+    showItem(step) {
+      const { screen, countdown } = this.deps;
+      const steps = this.sitting?.steps ?? [];
+      const stimulus = step.stimulusId ? steps.find(
+        (other) => other.kind === "stimulus" && other.stimulusId === step.stimulusId
+      ) ?? null : null;
+      const siblings = steps.filter(
+        (other) => other.kind === "item" && other.sectionId === step.sectionId
+      );
+      screen.render(
+        renderItem({
+          step,
+          stimulus,
+          position: siblings.indexOf(step) + 1,
+          of: siblings.length
+        })
+      );
+      const options = screen.all(".opt");
+      const choose = (choice) => {
+        this.responses[step.itemId] = choice;
+        for (const option of options)
+          option.setAttribute("aria-checked", String(Number(option.dataset.i) === choice));
+      };
+      for (const option of options)
+        option.onclick = () => choose(Number(option.dataset.i));
+      const finish = once(() => {
+        this.spent[step.itemId] = Math.round(countdown.total() - countdown.remaining());
+        this.next();
+      });
+      this.runClock(step.seconds, finish);
+      const go = screen.byId("go");
+      if (go) go.onclick = finish;
+      screen.onKey((event) => {
+        if (/^[1-4]$/.test(event.key)) {
+          event.preventDefault();
+          choose(Number(event.key));
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          finish();
+        }
+      });
+    }
+    // -- results -------------------------------------------------------------
+    showResults() {
+      const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
+      countdown.stop();
+      chrome.showTime(0, 0, false);
+      chrome.showProgress(1);
+      screen.onKey(null);
+      const sitting = this.sitting;
+      if (!sitting) return this.showSetup();
+      const attempt = scoreAttempt.execute({
+        sitting,
+        responses: this.responses,
+        spent: this.spent,
+        essay: this.essay
+      });
+      screen.render(
+        renderResults({ report: attempt.score, spent: this.spent, essay: this.essay })
+      );
+      const again = screen.byId("again");
+      if (again) again.onclick = () => this.showSetup();
+      const download = screen.byId("dl");
+      if (download)
+        download.onclick = () => saver.save(`${sitting.meta.id ?? "mapam"}-attempt.json`, attempt);
+    }
+    rules() {
+      return this.sitting?.rules ?? RULES;
+    }
+  };
+  function defaultConfig(bank) {
+    const minutes = bank?.writingTask?.minutes;
+    return {
+      writingMinutes: minutes ?? RULES.writing.defaultMinutes,
+      blueprint: "full",
+      seed: "a",
+      includeWriting: true
+    };
+  }
+
+  // src/presentation/web/main.ts
+  function required(selector) {
+    const element = document.querySelector(selector);
+    if (!element) throw new Error(`\u05D4\u05E8\u05E6\u05D4 \u05E0\u05DB\u05E9\u05DC\u05D4: \u05D7\u05E1\u05E8 \u05D4\u05D0\u05DC\u05DE\u05E0\u05D8 ${selector}`);
+    return element;
+  }
+  function bootstrap() {
+    const controller = new RunnerController({
+      screen: new DomScreen(required("#app")),
+      chrome: new DomChrome(
+        required("#dial"),
+        required("#arc"),
+        required("#clock"),
+        required("#rail i")
+      ),
+      countdown: new IntervalCountdown(),
+      bankFiles: new BrowserBankFileReader(),
+      saver: new JsonFileSaver(),
+      buildSitting: new BuildSittingUseCase(seededRandomFactory),
+      scoreAttempt: new ScoreAttemptUseCase(),
+      exampleBank: window.EXAMPLE_BANK ?? null
+    });
+    window.addEventListener("beforeunload", (event) => {
+      if (!controller.isRunning()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    controller.start();
+    return controller;
+  }
+  bootstrap();
+})();
+</script>
+</body>
+</html>

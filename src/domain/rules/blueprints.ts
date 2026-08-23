@@ -1,41 +1,40 @@
 /* How many items of each type a sitting draws from the bank.
  *
- * `reading_passage` / `figure` count stimuli; `*_question` count the total
- * questions drawn across them. `chapters` is how many timed chapters the
- * domain is split into (micro-breaks go between them).
- *
  * These counts are calibrated so the whole sitting lands on the 5.5-hour
  * ceiling — they are not published by NITE. Tune them per institution and the
- * rest of the system follows. */
+ * rest of the system follows.
+ *
+ * One type per file under ./blueprints/; this barrel re-exports them
+ * alongside the counts themselves. */
 
-import type { Domain, ItemType } from '../model/bank.ts';
+import type { Blueprint } from './blueprints/blueprint.ts';
+import type { BlueprintName } from './blueprints/blueprint-name.ts';
 
-export interface DomainBlueprint extends Partial<Record<ItemType, number>> {
-  chapters: number;
-}
-
-export type Blueprint = Partial<Record<Domain, DomainBlueprint>>;
-
-export type BlueprintName = 'standard' | 'half' | 'full';
+export type { Blueprint } from './blueprints/blueprint.ts';
+export type { BlueprintName } from './blueprints/blueprint-name.ts';
+export type { DomainBlueprint } from './blueprints/domain-blueprint.ts';
 
 /** `full` is null: take everything in the bank, in bank order, no sampling. */
 export const BLUEPRINTS: Record<BlueprintName, Blueprint | null> = {
+  // A real MAPAM sitting is three chapters, one per domain — not the eight of
+  // the paper test. Each is shaped like a single printed chapter: the verbal
+  // one carries a single passage, the English one carries two.
   standard: {
     verbal: {
-      chapters: 2,
+      chapters: 1,
       analogy: 6,
-      sentence_completion: 5,
-      logic: 7,
-      reading_passage: 2,
+      sentence_completion: 3,
+      logic: 8,
+      reading_passage: 1,
       reading_question: 6,
     },
-    quantitative: { chapters: 2, problem: 15, figure: 2, figure_question: 5 },
+    quantitative: { chapters: 1, problem: 16, figure: 1, figure_question: 4 },
     english: {
-      chapters: 2,
-      sentence_completion: 10,
-      restatement: 7,
+      chapters: 1,
+      sentence_completion: 8,
+      restatement: 4,
       reading_passage: 2,
-      reading_question: 7,
+      reading_question: 10,
     },
   },
 

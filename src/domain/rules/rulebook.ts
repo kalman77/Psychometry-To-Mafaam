@@ -1,52 +1,19 @@
 /* The MAPAM rulebook.
  * Everything the format dictates lives here and nowhere else. Change a number
- * here and the schedule, the runner and the CLI all follow. */
+ * here and the schedule, the runner and the CLI all follow.
+ *
+ * One type per file under ./rulebook/; this barrel re-exports them alongside
+ * the numbers themselves. */
 
-import type { Domain, ItemType, SittingDomain } from '../model/bank.ts';
+import type { Rulebook } from './rulebook/rulebook.ts';
 
-/** Seconds allotted per item type, per domain. A type absent from a domain
- *  does not exist in that domain — the validator leans on exactly that. */
-export type TimeTable = Record<Domain, Partial<Record<ItemType, number>>>;
-
-export interface WritingRules {
-  defaultMinutes: number;
-  /** 30 is standard; the longer values are approved accommodations. */
-  allowedMinutes: number[];
-  minLines: number;
-}
-
-export interface BreakRules {
-  /** After the writing task, after verbal, after quantitative. */
-  majorSeconds: number;
-  /** Between chapters inside a domain. */
-  microSeconds: number;
-  /** "נבחנים המעוניינים לקצר את ההפסקה יוכלו לעשות זאת" */
-  skippable: boolean;
-}
-
-export interface BehaviourRules {
-  /** One shot per question, no returning. */
-  allowBack: boolean;
-  /** Answering early lets you move on. */
-  allowEarlyAdvance: boolean;
-  autoAdvanceOnTimeout: boolean;
-  /** The passage/table stays on screen during its questions. */
-  keepStimulusVisible: boolean;
-}
-
-export interface SessionRules {
-  maxSeconds: number;
-  typicalSeconds: number;
-}
-
-export interface Rulebook {
-  time: TimeTable;
-  writing: WritingRules;
-  breaks: BreakRules;
-  behaviour: BehaviourRules;
-  domainOrder: SittingDomain[];
-  session: SessionRules;
-}
+export type { BehaviourRules } from './rulebook/behaviour-rules.ts';
+export type { BreakRules } from './rulebook/break-rules.ts';
+export type { Rulebook } from './rulebook/rulebook.ts';
+export type { RulebookOverrides } from './rulebook/rulebook-overrides.ts';
+export type { SessionRules } from './rulebook/session-rules.ts';
+export type { TimeTable } from './rulebook/time-table.ts';
+export type { WritingRules } from './rulebook/writing-rules.ts';
 
 /** Source: NITE MAPAM time-per-question table. */
 export const RULES: Rulebook = {
@@ -90,9 +57,4 @@ export const RULES: Rulebook = {
 
   // "לא תמיד אפשר להניח להיבחן במשך יותר מחמש שעות וחצי"
   session: { maxSeconds: 5.5 * 3600, typicalSeconds: 3.5 * 3600 },
-};
-
-/** Partial overrides an institution can hand to a build. */
-export type RulebookOverrides = {
-  [K in keyof Rulebook]?: Rulebook[K] extends object ? Partial<Rulebook[K]> : Rulebook[K];
 };

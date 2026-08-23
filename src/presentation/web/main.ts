@@ -11,6 +11,7 @@ import { DomScreen } from '../../infrastructure/web/dom-screen.ts';
 import { BrowserBankFileReader } from '../../infrastructure/web/file-bank-reader.ts';
 import { IntervalCountdown } from '../../infrastructure/web/interval-countdown.ts';
 import { JsonFileSaver } from '../../infrastructure/web/json-file-saver.ts';
+import { LocalProgressStore } from '../../infrastructure/web/local-progress-store.ts';
 import { RunnerController } from './runner-controller.ts';
 
 declare global {
@@ -38,12 +39,14 @@ export function bootstrap(): RunnerController {
     countdown: new IntervalCountdown(),
     bankFiles: new BrowserBankFileReader(),
     saver: new JsonFileSaver(),
+    progress: new LocalProgressStore(),
     buildSitting: new BuildSittingUseCase(seededRandomFactory),
     scoreAttempt: new ScoreAttemptUseCase(),
     exampleBank: window.EXAMPLE_BANK ?? null,
   });
 
-  // Leaving mid-sitting loses the run — there is no going back in this format.
+  // Progress is saved as the sitting moves, so leaving costs the current
+  // question rather than the whole run — but it is still worth a confirmation.
   window.addEventListener('beforeunload', (event) => {
     if (!controller.isRunning()) return;
     event.preventDefault();

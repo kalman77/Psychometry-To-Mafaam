@@ -95,17 +95,24 @@ than copies:
 
 ```ts
 BLUEPRINTS.standard = {
-  verbal:       { chapters: 2, analogy: 6, sentence_completion: 5, logic: 7,
-                  reading_passage: 2, reading_question: 6 },
-  quantitative: { chapters: 2, problem: 15, figure: 2, figure_question: 5 },
-  english:      { chapters: 2, sentence_completion: 10, restatement: 7,
-                  reading_passage: 2, reading_question: 7 }
+  verbal:       { chapters: 1, analogy: 6, sentence_completion: 3, logic: 8,
+                  reading_passage: 1, reading_question: 6 },
+  quantitative: { chapters: 1, problem: 16, figure: 1, figure_question: 4 },
+  english:      { chapters: 1, sentence_completion: 8, restatement: 4,
+                  reading_passage: 2, reading_question: 10 }
 }
 ```
 
-That lands on 5h26m including the writing task and breaks — just inside the ceiling.
-`half` is a warm-up run at roughly half the clock. `full` takes the bank as-is, which
-is what you want for a single-chapter drill.
+MAPAM is **three chapters, one per domain** — not the paper test's eight. Each is
+shaped like a single printed chapter: 23 verbal, 20 quantitative, 22 English, with one
+reading passage in the verbal chapter and two in the English one. A domain's chapters
+in the bank are pooled and re-dealt, so items from both printed chapters land in the
+one MAPAM chapter, grouped by type in the order the booklet uses them —
+every analogy, then the sentence completions, then the inference questions, then the
+passage and its questions.
+
+That lands on 4h58m including the writing task and breaks — inside the ceiling.
+`half` is a warm-up run at roughly half the clock. `full` takes the bank as-is.
 
 `reading_passage` and `figure` count *stimuli*; `reading_question` and `figure_question`
 count questions drawn across them, spread as evenly as the bank allows. Selection is

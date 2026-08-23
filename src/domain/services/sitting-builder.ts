@@ -5,28 +5,17 @@
 
 import type { Bank, Domain, SittingDomain } from '../model/bank.ts';
 import type { Sitting, SittingSummary, Step } from '../model/sitting.ts';
-import type { Blueprint } from '../rules/blueprints.ts';
 import { CHAPTER_ORDINALS, DOMAIN_LABELS, typeLabel } from '../rules/labels.ts';
-import { RULES, type Rulebook, type RulebookOverrides } from '../rules/rulebook.ts';
+import { RULES, type Rulebook } from '../rules/rulebook.ts';
 import { clone, deepMerge } from '../support/objects.ts';
 import { poolGroups, type ItemGroup } from './grouping.ts';
 import type { RandomSource } from './random.ts';
 import { intoChapters, selectGroups } from './selection.ts';
 import { summarize } from './summary.ts';
 
-export interface BuildOptions {
-  /** null (the default) takes the bank as-is; otherwise a resolved blueprint. */
-  blueprint?: Blueprint | null;
-  /** Recorded on the sitting so a run can be reproduced. */
-  seed?: string | null;
-  includeWriting?: boolean;
-  writingMinutes?: number;
-  /** Chapters per domain when no blueprint dictates it. */
-  chapters?: number;
-  /** Seconds on each section-intro screen. */
-  introSeconds?: number;
-  rules?: RulebookOverrides;
-}
+import type { BuildOptions } from './sitting-builder/build-options.ts';
+
+export type { BuildOptions } from './sitting-builder/build-options.ts';
 
 export function buildSitting(
   bank: Bank,
@@ -53,6 +42,7 @@ export function buildSitting(
       prompt: bank.writingTask.prompt,
       intro: bank.writingTask.intro ?? null,
       minLines: bank.writingTask.minLines ?? rules.writing.minLines,
+      image: bank.writingTask.image ?? null,
     });
     push({ kind: 'break', seconds: rules.breaks.majorSeconds, label: 'הפסקה', after: 'writing' });
   }

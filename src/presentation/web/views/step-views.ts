@@ -3,7 +3,6 @@
 
 import type {
   BreakStep,
-  ItemStep,
   SectionIntroStep,
   StimulusStep,
   WritingStep,
@@ -11,6 +10,7 @@ import type {
 import { domainLabel, typeLabel } from '../../../domain/rules/labels.ts';
 import { formatDuration } from '../../../domain/support/duration.ts';
 import { directionOf, esc, isHebrew, paragraphs, when } from '../html.ts';
+import type { ItemViewModel } from './step-views/item-view-model.ts';
 
 export function renderSectionIntro(step: SectionIntroStep): string {
   return `
@@ -43,13 +43,16 @@ export function renderBreak(step: BreakStep, skippable: boolean): string {
 }
 
 export function renderWriting(step: WritingStep): string {
+  /* Scanned, the task is a picture of the page and needs the width to match. */
+  const scan = Boolean(step.image) && !step.prompt;
   return `
   <div class="stage">
     <div class="topbar"><span class="tag">מטלת כתיבה</span><span class="tag dot">${step.seconds / 60} דקות</span></div>
-    <div class="sheet narrow">
+    <div class="sheet ${scan ? 'wide' : 'narrow'}">
       <div class="card">
         ${when(step.intro, `<p class="instruction">${esc(step.intro)}</p>`)}
-        <div class="stem">${esc(step.prompt)}</div>
+        ${when(step.prompt, `<div class="stem">${esc(step.prompt)}</div>`)}
+        ${when(step.image, `<img class="scan-passage" src="${esc(step.image)}" alt="">`)}
       </div>
       <textarea id="essay" placeholder="כתבו כאן…" spellcheck="false"></textarea>
       <div class="meter">
@@ -61,6 +64,11 @@ export function renderWriting(step: WritingStep): string {
   </div>`;
 }
 
+/** A passage lifted off the page scan rather than out of the text layer. */
+export function isScan(step: StimulusStep): boolean {
+  return Boolean(step.image) && !step.body && !step.html;
+}
+
 /** The passage or table itself — shown alone first, then beside its questions. */
 export function renderStimulusBody(step: StimulusStep, maxHeight: string): string {
   const dir = step.dir ?? (isHebrew((step.body ?? '') + (step.title ?? '')) ? 'rtl' : 'ltr');
@@ -69,34 +77,62 @@ export function renderStimulusBody(step: StimulusStep, maxHeight: string): strin
     `${step.html ?? ''}${step.body ? paragraphs(step.body) : ''}` +
     when(
       step.image,
-      `<img src="${esc(step.image)}" alt="" style="max-width:100%;border-radius:var(--r-sm)">`,
+      `<img class="${isScan(step) ? 'scan-passage' : 'inline-figure'}" src="${esc(step.image)}" alt="">`,
     ) +
     `</div>`
   );
 }
 
 export function renderStimulus(step: StimulusStep): string {
+  /* A scanned passage is a picture of a page: shrunk into the narrow sheet it
+   * is unreadable, so it gets the full width the same way a scanned question does. */
+  const scan = isScan(step);
   return `
   <div class="stage">
     <div class="topbar"><span class="tag">${esc(domainLabel(step.domain))}</span><span class="tag dot">זמן קריאה · ${Math.round(step.seconds / 60)} דקות</span></div>
-    <div class="sheet narrow"><div class="card"><h3>${esc(step.title)}</h3>${renderStimulusBody(step, '58dvh')}</div></div>
+    <div class="sheet ${scan ? 'wide' : 'narrow'} centred"><div class="card"><h3>${esc(step.title)}</h3>${renderStimulusBody(step, scan ? '74dvh' : '58dvh')}</div></div>
     <div class="controls"><button class="btn" id="go">קראתי, לשאלות</button><span class="hint"><kbd>Enter</kbd></span></div>
   </div>`;
 }
 
-export interface ItemViewModel {
-  step: ItemStep;
-  /** The passage or table this question hangs off, if any. */
-  stimulus: StimulusStep | null;
-  /** 1-based position within its chapter, and the chapter's size. */
-  position: number;
-  of: number;
+export type { ItemViewModel } from './step-views/item-view-model.ts';
+
+/** The passage or chart behind a question, parked at the edge of the screen.
+ *
+ * The rulebook wants the source kept with its questions, and a split screen is
+ * the literal reading of that — but it shrinks both halves, which is exactly
+ * what makes a scan unreadable. A drawer keeps the source one tap away and
+ * lets the question itself have the whole page. */
+function renderSource(stimulus: StimulusStep): string {
+  const label = stimulus.stimulusKind === 'figure' ? 'התרשים' : 'קטע הקריאה';
+  return `
+  <button class="source-tab" id="source-open" aria-controls="source" aria-expanded="false">
+    <span class="source-chevron" aria-hidden="true"></span><span>${esc(label)}</span>
+  </button>
+  <div class="source" id="source" data-open="false">
+    <div class="source-scrim" id="source-scrim"></div>
+    <aside class="source-panel" role="dialog" aria-modal="true" aria-label="${esc(label)}">
+      <header class="source-head">
+        <h3>${esc(stimulus.title)}</h3>
+        <button class="source-shut" id="source-shut" aria-label="סגירה">✕</button>
+      </header>
+      ${renderStimulusBody(stimulus, 'calc(100dvh - 108px)')}
+    </aside>
+  </div>`;
 }
 
 export function renderItem(vm: ItemViewModel): string {
   const { step, stimulus } = vm;
   const dir = directionOf(step.dir, step.stem);
   const minutes = step.seconds % 60 ? (step.seconds / 60).toFixed(1) : step.seconds / 60;
+  /* A question lifted straight off the page scan: the picture is the question,
+   * so it gets the width the text would have used and the options collapse to
+   * the row of numbers you would mark on an answer sheet. */
+  const scan = !step.stem && step.options.every((option) => !option);
+  /* A scanned question is centred like any other and reaches its source
+   * through the drawer; only a text bank still splits the screen. */
+  const drawer = scan && stimulus !== null;
+  const width = drawer || (scan && !stimulus) ? 'wide' : stimulus ? 'split' : 'narrow';
 
   return `
   <div class="stage">
@@ -106,35 +142,38 @@ export function renderItem(vm: ItemViewModel): string {
       <span class="tag dot">${vm.position} מתוך ${vm.of}</span>
       <span class="tag dot">${minutes} דק׳</span>
     </div>
-    <div class="sheet${stimulus ? ' split' : ' narrow'}">
+    <div class="sheet ${width}${scan ? ' scan' : ''} centred">
       ${when(
-        stimulus,
+        stimulus && !drawer,
         stimulus
           ? `<div class="card"><h3>${esc(stimulus.title)}</h3>${renderStimulusBody(stimulus, '54dvh')}</div>`
           : '',
       )}
       <div class="card">
         ${when(step.instruction, `<p class="instruction">${esc(step.instruction)}</p>`)}
-        <div class="stem" dir="${dir}">${esc(step.stem)}</div>
+        ${when(step.stem, `<div class="stem" dir="${dir}">${esc(step.stem)}</div>`)}
         ${when(
           step.image,
-          `<img src="${esc(step.image)}" alt="" style="max-width:100%;margin-block-start:20px;border-radius:var(--r-sm)">`,
+          `<img class="${scan ? 'scan-img' : 'stem-img'}" src="${esc(step.image)}" alt="">`,
         )}
         <div class="options" role="radiogroup">
           ${step.options
             .map(
               (option, i) => `
             <button class="opt" role="radio" aria-checked="false" data-i="${i + 1}" dir="${dir}">
-              <span class="pip"></span><span class="label">${esc(option)}</span>
+              <span class="pip"></span><span class="label">${option ? esc(option) : i + 1}</span>
             </button>`,
             )
             .join('')}
         </div>
       </div>
     </div>
+    ${when(drawer, stimulus ? renderSource(stimulus) : '')}
     <div class="controls">
       <button class="btn" id="go">המשך</button>
-      <span class="hint"><kbd>1</kbd>–<kbd>4</kbd> לבחירה · <kbd>Enter</kbd> להמשך</span>
+      <span class="hint"><kbd>1</kbd>–<kbd>4</kbd> לבחירה${
+        drawer ? ' · <kbd>רווח</kbd> לקטע' : ''
+      } · <kbd>Enter</kbd> להמשך</span>
     </div>
   </div>`;
 }

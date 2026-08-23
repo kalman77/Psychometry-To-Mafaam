@@ -1,40 +1,10 @@
-/* What an attempt produces once the sitting is over. */
+/* What an attempt produces once the sitting is over.
+ *
+ * One type per file under ./scoring/; this barrel is the import surface. */
 
-import type { AnswerIndex, Domain, ItemType } from './bank.ts';
-
-/** itemId -> chosen option, or null/absent when the clock ran out unanswered. */
-export type Responses = Record<string, AnswerIndex | null | undefined>;
-
-/** itemId -> seconds actually spent on it. */
-export type TimeSpent = Record<string, number>;
-
-export interface AnsweredItem {
-  itemId: string;
-  domain: Domain;
-  type: ItemType;
-  given: AnswerIndex | null;
-  answer: AnswerIndex;
-  correct: boolean;
-  scored: boolean;
-}
-
-export type ByDomain<T> = Record<Domain, T>;
-
-export interface Composites {
-  multi: number;
-  verbalEmphasis: number;
-  quantEmphasis: number;
-}
-
-export interface ScoreReport {
-  /** Correct answers among scored items. */
-  raw: ByDomain<number>;
-  /** Scored items presented. */
-  attempted: ByDomain<number>;
-  /** 50–150 uniform scale. */
-  uniform: ByDomain<number>;
-  composites: Composites;
-  /** 200–800 estimates, one per composite. */
-  general: Composites;
-  detail: AnsweredItem[];
-}
+export type { AnsweredItem } from './scoring/answered-item.ts';
+export type { ByDomain } from './scoring/by-domain.ts';
+export type { Composites } from './scoring/composites.ts';
+export type { Responses } from './scoring/responses.ts';
+export type { ScoreReport } from './scoring/score-report.ts';
+export type { TimeSpent } from './scoring/time-spent.ts';

@@ -4,15 +4,13 @@
  * Everything it touches outside itself is a port — screen, chrome, countdown,
  * file reader, saver — and the two use cases it drives. No `document` here. */
 
-import type { BuildSittingUseCase } from '../../application/use-cases/build-sitting.ts';
-import type { ScoreAttemptUseCase } from '../../application/use-cases/score-attempt.ts';
 import type { AnswerIndex, Bank, UnverifiedBank } from '../../domain/model/bank.ts';
 import type { Responses, TimeSpent } from '../../domain/model/scoring.ts';
 import type { ItemStep, Sitting, Step, StimulusStep } from '../../domain/model/sitting.ts';
 import { RULES } from '../../domain/rules/rulebook.ts';
 import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
-import type { BankFileReader, Chrome, Countdown, FileSaver, Screen } from './ports.ts';
+import type { SavedProgress } from './ports.ts';
 import { renderResults } from './views/results-view.ts';
 import { renderSetup, type SetupConfig } from './views/setup-view.ts';
 import {
@@ -23,17 +21,9 @@ import {
   renderWriting,
 } from './views/step-views.ts';
 
-export interface RunnerDeps {
-  screen: Screen;
-  chrome: Chrome;
-  countdown: Countdown;
-  bankFiles: BankFileReader;
-  saver: FileSaver;
-  buildSitting: BuildSittingUseCase;
-  scoreAttempt: ScoreAttemptUseCase;
-  /** Bank inlined at build time, offered as "start from the example". */
-  exampleBank?: UnverifiedBank | null;
-}
+import type { RunnerDeps } from './runner-controller/runner-deps.ts';
+
+export type { RunnerDeps } from './runner-controller/runner-deps.ts';
 
 /** Wraps a callback so a step can only be advanced once, however it ended. */
 function once(fn: () => void): () => void {
@@ -53,6 +43,8 @@ export class RunnerController {
   private spent: TimeSpent = {};
   private essay = '';
   private config: SetupConfig = defaultConfig();
+  /** Seconds left on a step being resumed, consumed by the next runClock. */
+  private resuming: number | null = null;
   private readonly deps: RunnerDeps;
 
   constructor(deps: RunnerDeps) {
@@ -89,6 +81,7 @@ export class RunnerController {
         preview,
         config: this.config,
         allowedMinutes: RULES.writing.allowedMinutes,
+        saved: this.savedRun(),
       }),
     );
 
@@ -150,6 +143,16 @@ export class RunnerController {
     const skip = screen.byId<HTMLInputElement>('skipw');
     if (skip) skip.onchange = () => this.reconfigure({ includeWriting: !skip.checked });
 
+    const saved = this.savedRun();
+    const resume = screen.byId('resume');
+    if (resume && saved) resume.onclick = () => this.resume(saved);
+    const discard = screen.byId('discard');
+    if (discard)
+      discard.onclick = () => {
+        this.deps.progress.clear();
+        this.showSetup();
+      };
+
     const start = screen.byId('start');
     if (start) start.onclick = () => this.begin();
   }
@@ -182,13 +185,54 @@ export class RunnerController {
     this.responses = {};
     this.spent = {};
     this.essay = '';
+    this.deps.progress.clear();
     this.showStep();
+  }
+
+  /** Pick a stopped run back up: the same bank, blueprint and seed rebuild the
+   *  same steps, so only the position inside them has to be restored. */
+  private resume(saved: SavedProgress): void {
+    this.config = saved.config;
+    this.sitting = this.deps.buildSitting.execute({ bank: this.bank, ...this.buildOptions() });
+    this.cursor = Math.min(saved.cursor, this.sitting.steps.length - 1);
+    this.responses = { ...saved.responses };
+    this.spent = { ...saved.spent };
+    this.essay = saved.essay;
+    this.resuming = saved.remaining > 0 ? saved.remaining : null;
+    this.paintProgress();
+    this.showStep();
+  }
+
+  /** The saved run, but only if it belongs to the bank now loaded. */
+  private savedRun(): SavedProgress | null {
+    const saved = this.deps.progress.load();
+    if (!saved || !this.bank) return null;
+    return saved.fingerprint === fingerprint(this.bank) ? saved : null;
+  }
+
+  /** Bank plus blueprint plus seed rebuild the steps, so those are all that a
+   *  save needs alongside the answers. */
+  private persist(): void {
+    if (!this.sitting || !this.bank) return;
+    const step = this.sitting.steps[this.cursor];
+    if (!step || step.kind === 'end') return;
+    this.deps.progress.save({
+      fingerprint: fingerprint(this.bank),
+      savedAt: Date.now(),
+      config: this.config,
+      cursor: this.cursor,
+      remaining: Math.round(this.deps.countdown.remaining()),
+      responses: this.responses,
+      spent: this.spent,
+      essay: this.essay,
+    });
   }
 
   private next(): void {
     this.cursor++;
     this.paintProgress();
     this.showStep();
+    this.persist();
   }
 
   private paintProgress(): void {
@@ -222,6 +266,12 @@ export class RunnerController {
 
   /** Runs the clock for a step; `visibleDial` is false during breaks. */
   private runClock(seconds: number, onExpire: () => void, visibleDial = true): void {
+    // A resumed step keeps the clock it was interrupted on rather than being
+    // handed a fresh one.
+    if (this.resuming !== null) {
+      seconds = Math.min(seconds, this.resuming);
+      this.resuming = null;
+    }
     this.deps.countdown.start(seconds, {
       onTick: (remaining, total) => this.deps.chrome.showTime(remaining, total, visibleDial),
       onExpire,
@@ -344,14 +394,38 @@ export class RunnerController {
       this.responses[step.itemId] = choice;
       for (const option of options)
         option.setAttribute('aria-checked', String(Number(option.dataset.i) === choice));
+      this.persist();
     };
     for (const option of options)
       option.onclick = () => choose(Number(option.dataset.i) as AnswerIndex);
+
+    // Resuming onto a question already answered should show that answer, not
+    // an empty row: you can be interrupted between choosing and continuing.
+    const already = this.responses[step.itemId];
+    if (already != null)
+      for (const option of options)
+        option.setAttribute('aria-checked', String(Number(option.dataset.i) === already));
 
     const finish = once(() => {
       this.spent[step.itemId] = Math.round(countdown.total() - countdown.remaining());
       this.next();
     });
+
+    // The source drawer, when this question has a passage or chart behind it.
+    const source = screen.byId('source');
+    const tab = screen.byId('source-open');
+    const setSource = (open: boolean): void => {
+      if (!source) return;
+      source.dataset.open = String(open);
+      tab?.setAttribute('aria-expanded', String(open));
+    };
+    if (source && tab) {
+      tab.onclick = () => setSource(source.dataset.open !== 'true');
+      const shut = screen.byId('source-shut');
+      if (shut) shut.onclick = () => setSource(false);
+      const scrim = screen.byId('source-scrim');
+      if (scrim) scrim.onclick = () => setSource(false);
+    }
 
     this.runClock(step.seconds, finish);
     const go = screen.byId('go');
@@ -360,6 +434,14 @@ export class RunnerController {
       if (/^[1-4]$/.test(event.key)) {
         event.preventDefault();
         choose(Number(event.key) as AnswerIndex);
+      } else if (event.code === 'Space' && source) {
+        // Space peeks at the source; it is the one key a Hebrew layout and a
+        // Latin one agree on.
+        event.preventDefault();
+        setSource(source.dataset.open !== 'true');
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setSource(false);
       } else if (event.key === 'Enter') {
         event.preventDefault();
         finish();
@@ -372,6 +454,7 @@ export class RunnerController {
   private showResults(): void {
     const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
     countdown.stop();
+    this.deps.progress.clear();
     chrome.showTime(0, 0, false);
     chrome.showProgress(1);
     screen.onKey(null);
@@ -404,11 +487,23 @@ export class RunnerController {
   }
 }
 
+/** Enough of a bank to tell it apart from another one, without hashing several
+ *  megabytes of embedded images: its id, its sections and how many items each
+ *  holds. A save restored onto a different bank would land on other questions. */
+function fingerprint(bank: UnverifiedBank): string {
+  const parsed = bank as Bank;
+  const sections = (parsed.sections ?? [])
+    .map((section) => `${section.id}:${section.items?.length ?? 0}`)
+    .join(',');
+  return `${parsed.meta?.id ?? '?'}|${sections}`;
+}
+
 function defaultConfig(bank?: UnverifiedBank): SetupConfig {
   const minutes = (bank as Bank | undefined)?.writingTask?.minutes;
   return {
     writingMinutes: minutes ?? RULES.writing.defaultMinutes,
-    blueprint: 'full',
+    // The real sitting, not the whole bank: three chapters inside the ceiling.
+    blueprint: 'standard',
     seed: 'a',
     includeWriting: true,
   };

@@ -2,20 +2,12 @@
  * question, or one stimulus plus the questions hanging off it. Selection and
  * chapter-dealing both work in groups, never in loose items. */
 
-import type { Bank, Domain, Item, ItemType, Stimulus } from '../model/bank.ts';
+import type { Bank, Domain } from '../model/bank.ts';
 import type { Rulebook } from '../rules/rulebook.ts';
 import { DEFAULT_STIMULUS_KIND } from '../rules/taxonomy.ts';
+import type { ItemGroup } from './grouping/item-group.ts';
 
-export interface ItemGroup {
-  kind: 'single' | 'stimulus';
-  /** For a stimulus group this is its kind (reading_passage / figure);
-   *  for a standalone question it is the item's type. */
-  type: ItemType;
-  stimulus: Stimulus | null;
-  items: Item[];
-  sectionId: string;
-  seconds: number;
-}
+export type { ItemGroup } from './grouping/item-group.ts';
 
 export function groupSeconds(
   group: Omit<ItemGroup, 'seconds'>,

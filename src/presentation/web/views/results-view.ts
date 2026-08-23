@@ -2,7 +2,6 @@
  * actually spent on it. */
 
 import type { Domain } from '../../../domain/model/bank.ts';
-import type { ScoreReport, TimeSpent } from '../../../domain/model/scoring.ts';
 import { typeLabel } from '../../../domain/rules/labels.ts';
 import { formatDuration } from '../../../domain/support/duration.ts';
 import { esc, paragraphs, when } from '../html.ts';
@@ -13,11 +12,9 @@ const DOMAINS: [Domain, string][] = [
   ['english', 'אנגלית'],
 ];
 
-export interface ResultsViewModel {
-  report: ScoreReport;
-  spent: TimeSpent;
-  essay: string;
-}
+import type { ResultsViewModel } from './results-view/results-view-model.ts';
+
+export type { ResultsViewModel } from './results-view/results-view-model.ts';
 
 export function renderResults(vm: ResultsViewModel): string {
   const { report } = vm;

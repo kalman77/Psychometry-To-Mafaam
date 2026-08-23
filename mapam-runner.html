@@ -65,7 +65,7 @@ h1{font-size:clamp(34px,5.4vw,54px)}
 .stage{min-height:100dvh;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   padding:26px var(--pad) 0;justify-content:center}
-.tag{font-size:12.5px;letter-spacing:.06em;color:var(--muted);font-weight:400}
+.tag{font-size:12.5px;letter-spacing:.06em;color:var(--muted);font-weight:400;white-space:nowrap}
 .tag.dot::before{content:'';display:inline-block;width:3px;height:3px;border-radius:50%;
   background:var(--sage-100);margin-inline-end:10px;vertical-align:middle}
 
@@ -74,10 +74,91 @@ h1{font-size:clamp(34px,5.4vw,54px)}
 .sheet.split{grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);align-items:start}
 @media (max-width:940px){.sheet.split{grid-template-columns:1fr}}
 .sheet.narrow{max-width:760px}
+/* `safe` so a stem taller than the viewport still starts at the top. */
+.sheet.centred{align-content:safe center}
+.sheet.wide{max-width:min(1600px,96vw)}
+/* Beside a passage the scan still needs the larger share — the passage
+   scrolls, the picture cannot. */
+.sheet.scan.split{max-width:min(1800px,97vw);
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr)}
+@media (max-width:940px){.sheet.scan.split{grid-template-columns:1fr}}
+
+/* A scanned question: give the picture the room, keep the answer row compact. */
+.scan .card{padding:clamp(12px,1.3vw,20px)}
+.scan-img{display:block;width:100%;height:auto;max-height:70dvh;object-fit:contain;
+  margin-inline:auto;border-radius:var(--r-sm)}
+.stem-img{display:block;max-width:100%;margin-block-start:20px;border-radius:var(--r-sm)}
+.scan-passage{display:block;width:100%;height:auto;border-radius:var(--r-sm)}
+.inline-figure{display:block;max-width:100%;border-radius:var(--r-sm)}
+/* Both halves carry a picture now, so neither gets to crowd the other. */
+.sheet.scan.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+
+/* ---- the source drawer: the passage or chart, parked at the edge --------- */
+.source-tab{
+  position:fixed;inset-inline-end:0;inset-block-start:50%;z-index:55;
+  display:flex;align-items:center;gap:9px;
+  padding:16px 18px;cursor:pointer;font:inherit;font-size:14.5px;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);border-inline-end:0;
+  border-start-start-radius:var(--r-md);border-end-start-radius:var(--r-md);
+  box-shadow:var(--shadow);
+  transform:translateY(-50%);
+  transition:background .28s var(--ease),box-shadow .28s var(--ease),
+             padding-inline-end .28s var(--ease);
+  animation:tab-in .5s var(--ease) both .25s;
+}
+.source-tab:hover{background:var(--sage-050);box-shadow:var(--shadow-lift);padding-inline-end:26px}
+.source-tab:focus-visible{outline:2px solid var(--sage);outline-offset:3px}
+.source-chevron{
+  width:7px;height:7px;border-inline-start:1.5px solid var(--sage);
+  border-block-start:1.5px solid var(--sage);transform:rotate(-45deg);
+  transition:transform .3s var(--ease)}
+.source-tab:hover .source-chevron{transform:rotate(-45deg) translate(2px,-2px)}
+@keyframes tab-in{from{opacity:0;transform:translateY(-50%) translateX(-14px)}
+                  to{opacity:1;transform:translateY(-50%)}}
+
+.source{position:fixed;inset:0;z-index:70;pointer-events:none;visibility:hidden;
+  transition:visibility 0s linear .45s}
+.source[data-open=true]{pointer-events:auto;visibility:visible;transition-delay:0s}
+.source-scrim{position:absolute;inset:0;background:rgba(31,43,39,.42);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transition:opacity .4s var(--ease)}
+.source[data-open=true] .source-scrim{opacity:1}
+
+.source-panel{
+  position:absolute;inset-block:0;inset-inline-end:0;width:min(880px,94vw);
+  display:flex;flex-direction:column;gap:0;
+  background:var(--surface);box-shadow:var(--shadow-lift);
+  --slide:100%;
+  transform:translateX(var(--slide));
+  transition:transform .44s var(--ease)}
+[dir=rtl] .source-panel{--slide:-100%}
+.source[data-open=true] .source-panel{transform:translateX(0)}
+
+.source-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:18px clamp(16px,2vw,26px);border-block-end:1px solid var(--line);flex:0 0 auto}
+.source-head h3{font-size:21px}
+.source-shut{background:transparent;border:1px solid var(--line);border-radius:50%;
+  width:34px;height:34px;cursor:pointer;color:var(--muted);line-height:1;
+  transition:background .22s var(--ease),color .22s var(--ease),transform .22s var(--ease)}
+.source-shut:hover{background:var(--sage-050);color:var(--ink);transform:rotate(90deg)}
+.source-panel .passage{padding:clamp(16px,2vw,26px);margin:0;flex:1 1 auto;
+  opacity:0;transform:translateY(10px);transition:opacity .4s var(--ease) .12s,
+  transform .4s var(--ease) .12s}
+.source[data-open=true] .source-panel .passage{opacity:1;transform:none}
+@media (max-width:720px){.source-tab{padding:13px 14px;font-size:13.5px}}
+.scan .options{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-block-start:18px}
+.scan .opt{grid-template-columns:22px auto;justify-content:center;align-items:center;
+  font-size:19px;padding-block:14px}
+@media (max-width:720px){.scan-img{max-height:60dvh}.scan .opt{font-size:17px}}
 
 .card{background:var(--surface);border-radius:var(--r-lg);padding:clamp(22px,2.8vw,38px);
   box-shadow:var(--shadow)}
 .card h3{font-size:24px;letter-spacing:.015em;margin-bottom:14px;color:var(--ink)}
+/* an interrupted sitting, offered back */
+.card.resume{display:flex;align-items:center;justify-content:space-between;gap:20px;
+  flex-wrap:wrap;border:1px solid var(--sage-100);background:var(--sage-050);
+  animation:rise .42s var(--ease) both}
+.resume-actions{display:flex;gap:10px;flex-wrap:wrap}
 
 .passage{max-height:min(58dvh,660px);overflow:auto;font-family:var(--read);
   font-size:16.5px;line-height:1.9;font-weight:400;color:#2D3D39;
@@ -191,8 +272,11 @@ table.review th,table.review td{border-block-end:1px solid var(--line);padding:1
 table.review tr:last-child td{border-block-end:0}
 table.review th{font-size:12px;color:var(--muted);font-weight:400;letter-spacing:.03em}
 td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
-.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-inline-end:9px}
-.dot.ok{background:var(--sage)} .dot.no{background:var(--clay)} .dot.na{background:var(--line)}
+/* Scoped to the review table: a bare `.dot` also matches the topbar's
+   `.tag.dot` separator and would force its 7px width onto every label. */
+td.n .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-inline-end:9px}
+td.n .dot.ok{background:var(--sage)} td.n .dot.no{background:var(--clay)}
+td.n .dot.na{background:var(--line)}
 
 /* motion */
 .options .opt{animation:rise .4s var(--ease) both}
@@ -237,22 +321,25 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
 
   // src/domain/rules/blueprints.ts
   var BLUEPRINTS = {
+    // A real MAPAM sitting is three chapters, one per domain — not the eight of
+    // the paper test. Each is shaped like a single printed chapter: the verbal
+    // one carries a single passage, the English one carries two.
     standard: {
       verbal: {
-        chapters: 2,
+        chapters: 1,
         analogy: 6,
-        sentence_completion: 5,
-        logic: 7,
-        reading_passage: 2,
+        sentence_completion: 3,
+        logic: 8,
+        reading_passage: 1,
         reading_question: 6
       },
-      quantitative: { chapters: 2, problem: 15, figure: 2, figure_question: 5 },
+      quantitative: { chapters: 1, problem: 16, figure: 1, figure_question: 4 },
       english: {
-        chapters: 2,
-        sentence_completion: 10,
-        restatement: 7,
+        chapters: 1,
+        sentence_completion: 8,
+        restatement: 4,
         reading_passage: 2,
-        reading_question: 7
+        reading_question: 10
       }
     },
     // Half-length dry run: same proportions, roughly half the clock.
@@ -379,7 +466,8 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
           "writingTask.minutes",
           `\u05D6\u05DE\u05DF \u05DB\u05EA\u05D9\u05D1\u05D4 ${minutes} \u05D0\u05D9\u05E0\u05D5 \u05D0\u05D7\u05D3 \u05DE\u05BE${rules.writing.allowedMinutes.join("/")}.`
         );
-      if (!writingTask.prompt) at("writingTask.prompt", "\u05D7\u05E1\u05E8\u05D4 \u05DE\u05D8\u05DC\u05EA \u05D4\u05DB\u05EA\u05D9\u05D1\u05D4.");
+      if (!writingTask.prompt && !writingTask.image)
+        at("writingTask.prompt", "\u05D7\u05E1\u05E8\u05D4 \u05DE\u05D8\u05DC\u05EA \u05D4\u05DB\u05EA\u05D9\u05D1\u05D4 (prompt \u05D0\u05D5 image).");
     }
     const seenIds = /* @__PURE__ */ new Set();
     (sections ?? []).forEach((rawSection, si) => {
@@ -418,7 +506,7 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
         if (!type) at(itemWhere, "\u05DC\u05E9\u05D0\u05DC\u05D4 \u05D7\u05E1\u05E8 type.");
         else if (!timeTable || timeTable[type] == null)
           at(itemWhere, `type "${type}" \u05D0\u05D9\u05E0\u05D5 \u05E7\u05D9\u05D9\u05DD \u05D1\u05EA\u05D7\u05D5\u05DD ${domain}.`);
-        if (!item.stem) at(itemWhere, "\u05D7\u05E1\u05E8 \u05D2\u05D5\u05E3 \u05E9\u05D0\u05DC\u05D4 (stem).");
+        if (!item.stem && !item.image) at(itemWhere, "\u05D7\u05E1\u05E8 \u05D2\u05D5\u05E3 \u05E9\u05D0\u05DC\u05D4 (stem) \u05D5\u05EA\u05DE\u05D5\u05E0\u05D4.");
         if (!Array.isArray(item.options) || item.options.length !== 4)
           at(itemWhere, "\u05E6\u05E8\u05D9\u05DA \u05D1\u05D3\u05D9\u05D5\u05E7 4 \u05DE\u05E1\u05D9\u05D7\u05D9\u05DD.");
         const answer = item.answer;
@@ -652,7 +740,8 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
         seconds: minutes * 60,
         prompt: bank.writingTask.prompt,
         intro: bank.writingTask.intro ?? null,
-        minLines: bank.writingTask.minLines ?? rules.writing.minLines
+        minLines: bank.writingTask.minLines ?? rules.writing.minLines,
+        image: bank.writingTask.image ?? null
       });
       push({ kind: "break", seconds: rules.breaks.majorSeconds, label: "\u05D4\u05E4\u05E1\u05E7\u05D4", after: "writing" });
     }
@@ -1173,6 +1262,33 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
     }
   };
 
+  // src/infrastructure/web/local-progress-store.ts
+  var KEY = "mapam.progress.v1";
+  var LocalProgressStore = class {
+    load() {
+      try {
+        const raw = window.localStorage.getItem(KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return typeof parsed?.fingerprint === "string" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+    save(progress) {
+      try {
+        window.localStorage.setItem(KEY, JSON.stringify(progress));
+      } catch {
+      }
+    }
+    clear() {
+      try {
+        window.localStorage.removeItem(KEY);
+      } catch {
+      }
+    }
+  };
+
   // src/presentation/web/html.ts
   var ENTITIES = {
     "&": "&amp;",
@@ -1280,8 +1396,31 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       <button class="btn quiet" id="demo">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DE\u05D1\u05E0\u05E7 \u05D4\u05D3\u05D5\u05D2\u05DE\u05D4</button>
     </div>
 
+    ${when(vm.saved, vm.saved ? renderResume(vm.saved) : "")}
     ${vm.bank ? vm.problems.length ? renderProblems(vm.problems) : renderReady(vm) : ""}
   </div></div>`;
+  }
+  function ago(savedAt) {
+    const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 6e4));
+    if (minutes < 1) return "\u05DC\u05E4\u05E0\u05D9 \u05E8\u05D2\u05E2";
+    if (minutes < 60) return `\u05DC\u05E4\u05E0\u05D9 ${minutes} \u05D3\u05E7\u05D5\u05EA`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `\u05DC\u05E4\u05E0\u05D9 ${hours} \u05E9\u05E2\u05D5\u05EA`;
+    return `\u05DC\u05E4\u05E0\u05D9 ${Math.round(hours / 24)} \u05D9\u05DE\u05D9\u05DD`;
+  }
+  function renderResume(saved) {
+    const answered = Object.values(saved.responses).filter((choice) => choice != null).length;
+    return `
+  <div class="card resume">
+    <div>
+      <b>\u05D9\u05E9 \u05D1\u05D7\u05D9\u05E0\u05D4 \u05E9\u05DC\u05D0 \u05D4\u05E1\u05EA\u05D9\u05D9\u05DE\u05D4</b>
+      <p class="tag" style="margin:6px 0 0">${esc(ago(saved.savedAt))} \xB7 ${answered} \u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E2\u05E0\u05D5</p>
+    </div>
+    <div class="resume-actions">
+      <button class="btn quiet" id="discard">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DE\u05D7\u05D3\u05E9</button>
+      <button class="btn" id="resume">\u05DC\u05D4\u05DE\u05E9\u05D9\u05DA \u05DE\u05D0\u05D9\u05E4\u05D4 \u05E9\u05D4\u05E4\u05E1\u05E7\u05EA\u05D9</button>
+    </div>
+  </div>`;
   }
   function renderProblems(problems) {
     return `
@@ -1363,13 +1502,15 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
   </div>`;
   }
   function renderWriting(step) {
+    const scan = Boolean(step.image) && !step.prompt;
     return `
   <div class="stage">
     <div class="topbar"><span class="tag">\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4</span><span class="tag dot">${step.seconds / 60} \u05D3\u05E7\u05D5\u05EA</span></div>
-    <div class="sheet narrow">
+    <div class="sheet ${scan ? "wide" : "narrow"}">
       <div class="card">
         ${when(step.intro, `<p class="instruction">${esc(step.intro)}</p>`)}
-        <div class="stem">${esc(step.prompt)}</div>
+        ${when(step.prompt, `<div class="stem">${esc(step.prompt)}</div>`)}
+        ${when(step.image, `<img class="scan-passage" src="${esc(step.image)}" alt="">`)}
       </div>
       <textarea id="essay" placeholder="\u05DB\u05EA\u05D1\u05D5 \u05DB\u05D0\u05DF\u2026" spellcheck="false"></textarea>
       <div class="meter">
@@ -1380,25 +1521,49 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
     <div class="controls"><button class="btn" id="go">\u05E1\u05D9\u05D9\u05DE\u05EA\u05D9</button><span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span></div>
   </div>`;
   }
+  function isScan(step) {
+    return Boolean(step.image) && !step.body && !step.html;
+  }
   function renderStimulusBody(step, maxHeight) {
     const dir = step.dir ?? (isHebrew((step.body ?? "") + (step.title ?? "")) ? "rtl" : "ltr");
     return `<div class="passage" dir="${dir}" style="max-height:${maxHeight}">${step.html ?? ""}${step.body ? paragraphs(step.body) : ""}` + when(
       step.image,
-      `<img src="${esc(step.image)}" alt="" style="max-width:100%;border-radius:var(--r-sm)">`
+      `<img class="${isScan(step) ? "scan-passage" : "inline-figure"}" src="${esc(step.image)}" alt="">`
     ) + `</div>`;
   }
   function renderStimulus(step) {
+    const scan = isScan(step);
     return `
   <div class="stage">
     <div class="topbar"><span class="tag">${esc(domainLabel(step.domain))}</span><span class="tag dot">\u05D6\u05DE\u05DF \u05E7\u05E8\u05D9\u05D0\u05D4 \xB7 ${Math.round(step.seconds / 60)} \u05D3\u05E7\u05D5\u05EA</span></div>
-    <div class="sheet narrow"><div class="card"><h3>${esc(step.title)}</h3>${renderStimulusBody(step, "58dvh")}</div></div>
+    <div class="sheet ${scan ? "wide" : "narrow"} centred"><div class="card"><h3>${esc(step.title)}</h3>${renderStimulusBody(step, scan ? "74dvh" : "58dvh")}</div></div>
     <div class="controls"><button class="btn" id="go">\u05E7\u05E8\u05D0\u05EA\u05D9, \u05DC\u05E9\u05D0\u05DC\u05D5\u05EA</button><span class="hint"><kbd>Enter</kbd></span></div>
+  </div>`;
+  }
+  function renderSource(stimulus) {
+    const label = stimulus.stimulusKind === "figure" ? "\u05D4\u05EA\u05E8\u05E9\u05D9\u05DD" : "\u05E7\u05D8\u05E2 \u05D4\u05E7\u05E8\u05D9\u05D0\u05D4";
+    return `
+  <button class="source-tab" id="source-open" aria-controls="source" aria-expanded="false">
+    <span class="source-chevron" aria-hidden="true"></span><span>${esc(label)}</span>
+  </button>
+  <div class="source" id="source" data-open="false">
+    <div class="source-scrim" id="source-scrim"></div>
+    <aside class="source-panel" role="dialog" aria-modal="true" aria-label="${esc(label)}">
+      <header class="source-head">
+        <h3>${esc(stimulus.title)}</h3>
+        <button class="source-shut" id="source-shut" aria-label="\u05E1\u05D2\u05D9\u05E8\u05D4">\u2715</button>
+      </header>
+      ${renderStimulusBody(stimulus, "calc(100dvh - 108px)")}
+    </aside>
   </div>`;
   }
   function renderItem(vm) {
     const { step, stimulus } = vm;
     const dir = directionOf(step.dir, step.stem);
     const minutes = step.seconds % 60 ? (step.seconds / 60).toFixed(1) : step.seconds / 60;
+    const scan = !step.stem && step.options.every((option) => !option);
+    const drawer = scan && stimulus !== null;
+    const width = drawer || scan && !stimulus ? "wide" : stimulus ? "split" : "narrow";
     return `
   <div class="stage">
     <div class="topbar">
@@ -1407,31 +1572,32 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       <span class="tag dot">${vm.position} \u05DE\u05EA\u05D5\u05DA ${vm.of}</span>
       <span class="tag dot">${minutes} \u05D3\u05E7\u05F3</span>
     </div>
-    <div class="sheet${stimulus ? " split" : " narrow"}">
+    <div class="sheet ${width}${scan ? " scan" : ""} centred">
       ${when(
-      stimulus,
+      stimulus && !drawer,
       stimulus ? `<div class="card"><h3>${esc(stimulus.title)}</h3>${renderStimulusBody(stimulus, "54dvh")}</div>` : ""
     )}
       <div class="card">
         ${when(step.instruction, `<p class="instruction">${esc(step.instruction)}</p>`)}
-        <div class="stem" dir="${dir}">${esc(step.stem)}</div>
+        ${when(step.stem, `<div class="stem" dir="${dir}">${esc(step.stem)}</div>`)}
         ${when(
       step.image,
-      `<img src="${esc(step.image)}" alt="" style="max-width:100%;margin-block-start:20px;border-radius:var(--r-sm)">`
+      `<img class="${scan ? "scan-img" : "stem-img"}" src="${esc(step.image)}" alt="">`
     )}
         <div class="options" role="radiogroup">
           ${step.options.map(
       (option, i) => `
             <button class="opt" role="radio" aria-checked="false" data-i="${i + 1}" dir="${dir}">
-              <span class="pip"></span><span class="label">${esc(option)}</span>
+              <span class="pip"></span><span class="label">${option ? esc(option) : i + 1}</span>
             </button>`
     ).join("")}
         </div>
       </div>
     </div>
+    ${when(drawer, stimulus ? renderSource(stimulus) : "")}
     <div class="controls">
       <button class="btn" id="go">\u05D4\u05DE\u05E9\u05DA</button>
-      <span class="hint"><kbd>1</kbd>\u2013<kbd>4</kbd> \u05DC\u05D1\u05D7\u05D9\u05E8\u05D4 \xB7 <kbd>Enter</kbd> \u05DC\u05D4\u05DE\u05E9\u05DA</span>
+      <span class="hint"><kbd>1</kbd>\u2013<kbd>4</kbd> \u05DC\u05D1\u05D7\u05D9\u05E8\u05D4${drawer ? " \xB7 <kbd>\u05E8\u05D5\u05D5\u05D7</kbd> \u05DC\u05E7\u05D8\u05E2" : ""} \xB7 <kbd>Enter</kbd> \u05DC\u05D4\u05DE\u05E9\u05DA</span>
     </div>
   </div>`;
   }
@@ -1454,6 +1620,8 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       __publicField(this, "spent", {});
       __publicField(this, "essay", "");
       __publicField(this, "config", defaultConfig());
+      /** Seconds left on a step being resumed, consumed by the next runClock. */
+      __publicField(this, "resuming", null);
       __publicField(this, "deps");
       this.deps = deps;
     }
@@ -1481,7 +1649,8 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
           problems,
           preview,
           config: this.config,
-          allowedMinutes: RULES.writing.allowedMinutes
+          allowedMinutes: RULES.writing.allowedMinutes,
+          saved: this.savedRun()
         })
       );
       this.bindSetup();
@@ -1535,6 +1704,15 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       if (seed) seed.onchange = () => this.reconfigure({ seed: seed.value });
       const skip = screen.byId("skipw");
       if (skip) skip.onchange = () => this.reconfigure({ includeWriting: !skip.checked });
+      const saved = this.savedRun();
+      const resume = screen.byId("resume");
+      if (resume && saved) resume.onclick = () => this.resume(saved);
+      const discard = screen.byId("discard");
+      if (discard)
+        discard.onclick = () => {
+          this.deps.progress.clear();
+          this.showSetup();
+        };
       const start = screen.byId("start");
       if (start) start.onclick = () => this.begin();
     }
@@ -1562,12 +1740,50 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       this.responses = {};
       this.spent = {};
       this.essay = "";
+      this.deps.progress.clear();
       this.showStep();
+    }
+    /** Pick a stopped run back up: the same bank, blueprint and seed rebuild the
+     *  same steps, so only the position inside them has to be restored. */
+    resume(saved) {
+      this.config = saved.config;
+      this.sitting = this.deps.buildSitting.execute({ bank: this.bank, ...this.buildOptions() });
+      this.cursor = Math.min(saved.cursor, this.sitting.steps.length - 1);
+      this.responses = { ...saved.responses };
+      this.spent = { ...saved.spent };
+      this.essay = saved.essay;
+      this.resuming = saved.remaining > 0 ? saved.remaining : null;
+      this.paintProgress();
+      this.showStep();
+    }
+    /** The saved run, but only if it belongs to the bank now loaded. */
+    savedRun() {
+      const saved = this.deps.progress.load();
+      if (!saved || !this.bank) return null;
+      return saved.fingerprint === fingerprint(this.bank) ? saved : null;
+    }
+    /** Bank plus blueprint plus seed rebuild the steps, so those are all that a
+     *  save needs alongside the answers. */
+    persist() {
+      if (!this.sitting || !this.bank) return;
+      const step = this.sitting.steps[this.cursor];
+      if (!step || step.kind === "end") return;
+      this.deps.progress.save({
+        fingerprint: fingerprint(this.bank),
+        savedAt: Date.now(),
+        config: this.config,
+        cursor: this.cursor,
+        remaining: Math.round(this.deps.countdown.remaining()),
+        responses: this.responses,
+        spent: this.spent,
+        essay: this.essay
+      });
     }
     next() {
       this.cursor++;
       this.paintProgress();
       this.showStep();
+      this.persist();
     }
     paintProgress() {
       if (!this.sitting) return this.deps.chrome.showProgress(0);
@@ -1595,6 +1811,10 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
     }
     /** Runs the clock for a step; `visibleDial` is false during breaks. */
     runClock(seconds, onExpire, visibleDial = true) {
+      if (this.resuming !== null) {
+        seconds = Math.min(seconds, this.resuming);
+        this.resuming = null;
+      }
       this.deps.countdown.start(seconds, {
         onTick: (remaining, total) => this.deps.chrome.showTime(remaining, total, visibleDial),
         onExpire
@@ -1693,13 +1913,32 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
         this.responses[step.itemId] = choice;
         for (const option of options)
           option.setAttribute("aria-checked", String(Number(option.dataset.i) === choice));
+        this.persist();
       };
       for (const option of options)
         option.onclick = () => choose(Number(option.dataset.i));
+      const already = this.responses[step.itemId];
+      if (already != null)
+        for (const option of options)
+          option.setAttribute("aria-checked", String(Number(option.dataset.i) === already));
       const finish = once(() => {
         this.spent[step.itemId] = Math.round(countdown.total() - countdown.remaining());
         this.next();
       });
+      const source = screen.byId("source");
+      const tab = screen.byId("source-open");
+      const setSource = (open) => {
+        if (!source) return;
+        source.dataset.open = String(open);
+        tab?.setAttribute("aria-expanded", String(open));
+      };
+      if (source && tab) {
+        tab.onclick = () => setSource(source.dataset.open !== "true");
+        const shut = screen.byId("source-shut");
+        if (shut) shut.onclick = () => setSource(false);
+        const scrim = screen.byId("source-scrim");
+        if (scrim) scrim.onclick = () => setSource(false);
+      }
       this.runClock(step.seconds, finish);
       const go = screen.byId("go");
       if (go) go.onclick = finish;
@@ -1707,6 +1946,12 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
         if (/^[1-4]$/.test(event.key)) {
           event.preventDefault();
           choose(Number(event.key));
+        } else if (event.code === "Space" && source) {
+          event.preventDefault();
+          setSource(source.dataset.open !== "true");
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setSource(false);
         } else if (event.key === "Enter") {
           event.preventDefault();
           finish();
@@ -1717,6 +1962,7 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
     showResults() {
       const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
       countdown.stop();
+      this.deps.progress.clear();
       chrome.showTime(0, 0, false);
       chrome.showProgress(1);
       screen.onKey(null);
@@ -1741,11 +1987,17 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       return this.sitting?.rules ?? RULES;
     }
   };
+  function fingerprint(bank) {
+    const parsed = bank;
+    const sections = (parsed.sections ?? []).map((section) => `${section.id}:${section.items?.length ?? 0}`).join(",");
+    return `${parsed.meta?.id ?? "?"}|${sections}`;
+  }
   function defaultConfig(bank) {
     const minutes = bank?.writingTask?.minutes;
     return {
       writingMinutes: minutes ?? RULES.writing.defaultMinutes,
-      blueprint: "full",
+      // The real sitting, not the whole bank: three chapters inside the ceiling.
+      blueprint: "standard",
       seed: "a",
       includeWriting: true
     };
@@ -1769,6 +2021,7 @@ td.n{font-family:var(--num);font-variant-numeric:tabular-nums}
       countdown: new IntervalCountdown(),
       bankFiles: new BrowserBankFileReader(),
       saver: new JsonFileSaver(),
+      progress: new LocalProgressStore(),
       buildSitting: new BuildSittingUseCase(seededRandomFactory),
       scoreAttempt: new ScoreAttemptUseCase(),
       exampleBank: window.EXAMPLE_BANK ?? null

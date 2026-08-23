@@ -1,28 +1,13 @@
 /* The opening screen: drop a bank, choose a length, start. */
 
 import type { BankProblem } from '../../../domain/services/bank-validator.ts';
-import type { Bank } from '../../../domain/model/bank.ts';
-import type { Sitting } from '../../../domain/model/sitting.ts';
+import type { SavedProgress } from '../ports.ts';
 import { minutesOf } from '../../../domain/support/duration.ts';
 import { esc, when } from '../html.ts';
+import type { SetupViewModel } from './setup-view/setup-view-model.ts';
 
-export interface SetupConfig {
-  writingMinutes: number;
-  /** Blueprint name as chosen in the UI — 'full' means the whole bank. */
-  blueprint: string;
-  seed: string;
-  includeWriting: boolean;
-}
-
-export interface SetupViewModel {
-  message: string | null;
-  bank: Bank | null;
-  problems: BankProblem[];
-  /** Built from the current config, so the numbers on screen are the real ones. */
-  preview: Sitting | null;
-  config: SetupConfig;
-  allowedMinutes: number[];
-}
+export type { SetupConfig } from './setup-view/setup-config.ts';
+export type { SetupViewModel } from './setup-view/setup-view-model.ts';
 
 export function renderSetup(vm: SetupViewModel): string {
   return `
@@ -44,8 +29,34 @@ export function renderSetup(vm: SetupViewModel): string {
       <button class="btn quiet" id="demo">להתחיל מבנק הדוגמה</button>
     </div>
 
+    ${when(vm.saved, vm.saved ? renderResume(vm.saved) : '')}
     ${vm.bank ? (vm.problems.length ? renderProblems(vm.problems) : renderReady(vm)) : ''}
   </div></div>`;
+}
+
+/** How long ago a run was left, in the roundest words that are still true. */
+function ago(savedAt: number): string {
+  const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
+  if (minutes < 1) return 'לפני רגע';
+  if (minutes < 60) return `לפני ${minutes} דקות`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `לפני ${hours} שעות`;
+  return `לפני ${Math.round(hours / 24)} ימים`;
+}
+
+function renderResume(saved: SavedProgress): string {
+  const answered = Object.values(saved.responses).filter((choice) => choice != null).length;
+  return `
+  <div class="card resume">
+    <div>
+      <b>יש בחינה שלא הסתיימה</b>
+      <p class="tag" style="margin:6px 0 0">${esc(ago(saved.savedAt))} · ${answered} שאלות נענו</p>
+    </div>
+    <div class="resume-actions">
+      <button class="btn quiet" id="discard">להתחיל מחדש</button>
+      <button class="btn" id="resume">להמשיך מאיפה שהפסקתי</button>
+    </div>
+  </div>`;
 }
 
 function renderProblems(problems: BankProblem[]): string {

@@ -1,15 +1,10 @@
 /* Argument parsing for the CLI. Knows about flags, nothing else. */
 
-export type CommandName = 'validate' | 'schedule' | 'json';
+import type { CliRequest } from './args/cli-request.ts';
+import type { CommandName } from './args/command-name.ts';
 
-export interface CliRequest {
-  command: CommandName;
-  file: string;
-  writingMinutes?: number;
-  blueprint?: string;
-  seed?: string;
-  includeWriting: boolean;
-}
+export type { CliRequest } from './args/cli-request.ts';
+export type { CommandName } from './args/command-name.ts';
 
 export const USAGE = [
   'usage:',

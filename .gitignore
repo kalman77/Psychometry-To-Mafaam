@@ -22,3 +22,6 @@ Thumbs.db
 # local env
 .env
 .env.local
+
+*/__pycache__
+psychometric_spring_2025_acc.pdf

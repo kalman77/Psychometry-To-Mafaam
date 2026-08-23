@@ -1,18 +1,10 @@
 /* Use case: does this bank hold up, and how big is it? */
 
 import type { Bank, UnverifiedBank } from '../../domain/model/bank.ts';
-import {
-  countItems,
-  validateBank,
-  type BankProblem,
-} from '../../domain/services/bank-validator.ts';
+import { countItems, validateBank } from '../../domain/services/bank-validator.ts';
+import type { ValidationReport } from './validate-bank/validation-report.ts';
 
-export interface ValidationReport {
-  valid: boolean;
-  problems: BankProblem[];
-  /** Questions in the bank — 0 when it didn't validate. */
-  itemCount: number;
-}
+export type { ValidationReport } from './validate-bank/validation-report.ts';
 
 export class ValidateBankUseCase {
   execute(bank: UnverifiedBank): ValidationReport {

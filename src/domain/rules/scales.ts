@@ -4,6 +4,9 @@
  * booklet. Swap them when you swap tests. */
 
 import type { Domain } from '../model/bank.ts';
+import type { GeneralBand } from './scales/general-band.ts';
+
+export type { GeneralBand } from './scales/general-band.ts';
 
 /** index = raw score, value = uniform score (50–150). */
 export const SCALE: Record<Domain, number[]> = {
@@ -22,10 +25,6 @@ export const SCALE: Record<Domain, number[]> = {
     144, 147, 150,
   ],
 };
-
-/** [uniformLow, uniformHigh, generalLow, generalHigh] — weighted uniform score
- *  to the 200–800 general scale. */
-export type GeneralBand = readonly [number, number, number, number];
 
 export const GENERAL_BANDS: GeneralBand[] = [
   [50, 50, 200, 200],

@@ -1,9 +1,5 @@
-/* Where a bank comes from. The file system, a drop zone, a fetch — the use
- * cases neither know nor care. */
+/* Where a bank comes from, stated as a port.
+ *
+ * One type per file under ./bank-repository/; this barrel is the import surface. */
 
-import type { UnverifiedBank } from '../../domain/model/bank.ts';
-
-export interface BankRepository {
-  /** `reference` is adapter-specific: a path, a URL, a key. */
-  load(reference: string): Promise<UnverifiedBank>;
-}
+export type { BankRepository } from './bank-repository/bank-repository.ts';

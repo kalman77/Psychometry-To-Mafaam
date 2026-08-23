@@ -3,31 +3,16 @@
  * Validation, blueprint resolution and seeding happen here; the domain builder
  * below it only ever sees a valid bank and a resolved blueprint. */
 
-import type { Bank, UnverifiedBank } from '../../domain/model/bank.ts';
+import type { Bank } from '../../domain/model/bank.ts';
 import type { Sitting } from '../../domain/model/sitting.ts';
 import { InvalidBankError } from '../../domain/errors.ts';
-import {
-  BLUEPRINTS,
-  isBlueprintName,
-  type Blueprint,
-  type BlueprintName,
-} from '../../domain/rules/blueprints.ts';
-import type { RulebookOverrides } from '../../domain/rules/rulebook.ts';
+import { BLUEPRINTS, isBlueprintName, type Blueprint } from '../../domain/rules/blueprints.ts';
 import { validateBank } from '../../domain/services/bank-validator.ts';
 import { buildSitting } from '../../domain/services/sitting-builder.ts';
 import type { RandomSourceFactory } from '../ports/random.ts';
+import type { BuildSittingRequest } from './build-sitting/build-sitting-request.ts';
 
-export interface BuildSittingRequest {
-  bank: UnverifiedBank;
-  /** A blueprint name, a literal blueprint, or null/undefined for the whole bank. */
-  blueprint?: BlueprintName | string | Blueprint | null;
-  seed?: string | null;
-  includeWriting?: boolean;
-  writingMinutes?: number;
-  chapters?: number;
-  introSeconds?: number;
-  rules?: RulebookOverrides;
-}
+export type { BuildSittingRequest } from './build-sitting/build-sitting-request.ts';
 
 /** Names map to a table; anything else is taken literally. `full` is null. */
 export function resolveBlueprint(

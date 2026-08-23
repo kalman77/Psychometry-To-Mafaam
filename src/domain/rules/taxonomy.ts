@@ -1,6 +1,9 @@
 /* Which types exist where, in what order, and which ones hang off a stimulus. */
 
 import type { Domain, ItemType, StimulusKind } from '../model/bank.ts';
+import type { StimulusSpec } from './taxonomy/stimulus-spec.ts';
+
+export type { StimulusSpec } from './taxonomy/stimulus-spec.ts';
 
 /** Order the item types appear in within a chapter, per domain. */
 export const TYPE_ORDER: Record<Domain, ItemType[]> = {
@@ -8,12 +11,6 @@ export const TYPE_ORDER: Record<Domain, ItemType[]> = {
   quantitative: ['problem', 'figure'],
   english: ['sentence_completion', 'restatement', 'reading_passage'],
 };
-
-export interface StimulusSpec {
-  domains: Domain[];
-  /** The question type that hangs off this stimulus. */
-  childType: ItemType;
-}
 
 export const STIMULUS_TYPES: Record<StimulusKind, StimulusSpec> = {
   reading_passage: { domains: ['verbal', 'english'], childType: 'reading_question' },

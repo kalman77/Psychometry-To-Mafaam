@@ -6,11 +6,9 @@
 import type { Bank } from '../model/bank.ts';
 import { RULES, type Rulebook } from '../rules/rulebook.ts';
 import { DEFAULT_STIMULUS_KIND, requiresStimulus, stimulusSpec } from '../rules/taxonomy.ts';
+import type { BankProblem } from './bank-validator/bank-problem.ts';
 
-export interface BankProblem {
-  where: string;
-  message: string;
-}
+export type { BankProblem } from './bank-validator/bank-problem.ts';
 
 type Record_ = Record<string, unknown>;
 
@@ -49,7 +47,9 @@ export function validateBank(bank: unknown, rules: Rulebook = RULES): BankProble
         'writingTask.minutes',
         `זמן כתיבה ${minutes} אינו אחד מ־${rules.writing.allowedMinutes.join('/')}.`,
       );
-    if (!writingTask.prompt) at('writingTask.prompt', 'חסרה מטלת הכתיבה.');
+    // As with a scanned question, a picture of the task is the task.
+    if (!writingTask.prompt && !writingTask.image)
+      at('writingTask.prompt', 'חסרה מטלת הכתיבה (prompt או image).');
   }
 
   const seenIds = new Set<string>();
@@ -100,7 +100,9 @@ export function validateBank(bank: unknown, rules: Rulebook = RULES): BankProble
       else if (!timeTable || timeTable[type as keyof typeof timeTable] == null)
         at(itemWhere, `type "${type}" אינו קיים בתחום ${domain}.`);
 
-      if (!item.stem) at(itemWhere, 'חסר גוף שאלה (stem).');
+      // A scanned question carries everything in its image, so an empty stem
+      // is only a problem when there is no picture to read it from.
+      if (!item.stem && !item.image) at(itemWhere, 'חסר גוף שאלה (stem) ותמונה.');
       if (!Array.isArray(item.options) || item.options.length !== 4)
         at(itemWhere, 'צריך בדיוק 4 מסיחים.');
 

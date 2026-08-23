@@ -1,9 +1,10 @@
 /* What a built sitting adds up to: total clock, break clock, counts per domain. */
 
 import type { SittingDomain } from '../model/bank.ts';
-import type { DomainSummary, SittingSummary, Step } from '../model/sitting.ts';
+import type { DomainSummary, Step } from '../model/sitting.ts';
+import type { SittingTotals } from './summary/sitting-totals.ts';
 
-export type SittingTotals = Omit<SittingSummary, 'maxSeconds' | 'overBudget' | 'notes'>;
+export type { SittingTotals } from './summary/sitting-totals.ts';
 
 export function summarize(steps: Step[]): SittingTotals {
   const totals: SittingTotals = {

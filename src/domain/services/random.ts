@@ -2,12 +2,10 @@
  * a sitting has to be reproducible from its seed. The domain states what it
  * needs; infrastructure supplies it. */
 
-export interface RandomSource {
-  /** Uniform in [0, 1). */
-  next(): number;
-}
+import type { RandomSource } from './random/random-source.ts';
 
-export type RandomSourceFactory = (seed?: string | null) => RandomSource;
+export type { RandomSource } from './random/random-source.ts';
+export type { RandomSourceFactory } from './random/random-source-factory.ts';
 
 /** Fisher–Yates over a copy, then take the first `count`. */
 export function sample<T>(pool: readonly T[], count: number, random: RandomSource): T[] {

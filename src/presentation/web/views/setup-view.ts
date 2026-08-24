@@ -1,7 +1,7 @@
 /* The opening screen: drop a bank, choose a length, start. */
 
 import type { BankProblem } from '../../../domain/services/bank-validator.ts';
-import type { SavedProgress } from '../ports.ts';
+import type { Identity, SavedProgress, StoredBank } from '../ports.ts';
 import { minutesOf } from '../../../domain/support/duration.ts';
 import { esc, when } from '../html.ts';
 import type { SetupViewModel } from './setup-view/setup-view-model.ts';
@@ -21,17 +21,52 @@ export function renderSetup(vm: SetupViewModel): string {
     ${when(vm.message, `<div class="notice warn">${esc(vm.message)}</div>`)}
 
     <div id="drop" class="drop">
-      <b>גררו לכאן בנק שאלות</b><br>
-      <span style="color:var(--muted);font-size:15px">או לחצו לבחירת קובץ JSON</span>
-      <input id="file" type="file" accept=".json,application/json" hidden>
+      <b>גררו לכאן חוברת בחינה או בנק שאלות</b><br>
+      <span style="color:var(--muted);font-size:15px">PDF של חוברת, או קובץ JSON מוכן</span>
+      <input id="file" type="file" accept=".json,application/json,.pdf,application/pdf" hidden>
     </div>
     <div style="text-align:center;margin-block-start:-8px">
       <button class="btn quiet" id="demo">להתחיל מבנק הדוגמה</button>
     </div>
 
+    ${when(vm.identity, vm.identity ? renderAccount(vm.identity) : '')}
+    ${when(vm.library.length, renderLibrary(vm.library))}
     ${when(vm.saved, vm.saved ? renderResume(vm.saved) : '')}
     ${vm.bank ? (vm.problems.length ? renderProblems(vm.problems) : renderReady(vm)) : ''}
   </div></div>`;
+}
+
+function renderAccount(identity: Identity): string {
+  return `
+  <div class="account">
+    <span>${esc(identity.name)}</span>
+    <a href="/logout" class="account-out">יציאה</a>
+  </div>`;
+}
+
+const megabytes = (bytes: number): string => `${(bytes / 1e6).toFixed(1)} MB`;
+
+/** Booklets already on the server: uploading one is slow and it is the same
+ *  file every time, so the second sitting should not need the PDF at all. */
+function renderLibrary(banks: StoredBank[]): string {
+  return `
+  <div class="card library">
+    <h3>החוברות שלכם</h3>
+    <ul class="library-list">
+      ${banks
+        .map(
+          (bank) => `
+        <li>
+          <button class="library-open" data-bank="${esc(bank.id)}">
+            <b>${esc(bank.title)}</b>
+            <span class="tag">${bank.items} שאלות · ${megabytes(bank.bytes)}</span>
+          </button>
+          <button class="library-drop" data-bank="${esc(bank.id)}" aria-label="מחיקה">✕</button>
+        </li>`,
+        )
+        .join('')}
+    </ul>
+  </div>`;
 }
 
 /** How long ago a run was left, in the roundest words that are still true. */

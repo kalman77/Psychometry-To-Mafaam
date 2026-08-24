@@ -9,6 +9,8 @@ import { seededRandomFactory } from '../../infrastructure/random/seeded-random.t
 import { DomChrome } from '../../infrastructure/web/dom-chrome.ts';
 import { DomScreen } from '../../infrastructure/web/dom-screen.ts';
 import { BrowserBankFileReader } from '../../infrastructure/web/file-bank-reader.ts';
+import { ServerAccount } from '../../infrastructure/web/server-account.ts';
+import { ServerBankFileReader } from '../../infrastructure/web/server-bank-file-reader.ts';
 import { IntervalCountdown } from '../../infrastructure/web/interval-countdown.ts';
 import { JsonFileSaver } from '../../infrastructure/web/json-file-saver.ts';
 import { LocalProgressStore } from '../../infrastructure/web/local-progress-store.ts';
@@ -28,6 +30,10 @@ function required<T extends Element>(selector: string): T {
 }
 
 export function bootstrap(): RunnerController {
+  // Opened from a file:// URL there is no server to ask: no account, and PDFs
+  // cannot be extracted, so both features simply stay out of the way.
+  const served = location.protocol !== 'file:';
+
   const controller = new RunnerController({
     screen: new DomScreen(required<HTMLElement>('#app')),
     chrome: new DomChrome(
@@ -37,7 +43,10 @@ export function bootstrap(): RunnerController {
       required<HTMLElement>('#rail i'),
     ),
     countdown: new IntervalCountdown(),
-    bankFiles: new BrowserBankFileReader(),
+    // Opened from a file:// URL there is no server to ask, so PDFs are only
+    // offered when one served this page.
+    bankFiles: served ? new ServerBankFileReader() : new BrowserBankFileReader(),
+    account: served ? new ServerAccount() : null,
     saver: new JsonFileSaver(),
     progress: new LocalProgressStore(),
     buildSitting: new BuildSittingUseCase(seededRandomFactory),

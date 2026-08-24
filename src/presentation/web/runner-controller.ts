@@ -10,7 +10,7 @@ import type { ItemStep, Sitting, Step, StimulusStep } from '../../domain/model/s
 import { RULES } from '../../domain/rules/rulebook.ts';
 import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
-import type { SavedProgress } from './ports.ts';
+import type { Identity, SavedProgress, StoredBank } from './ports.ts';
 import { renderResults } from './views/results-view.ts';
 import { renderSetup, type SetupConfig } from './views/setup-view.ts';
 import {
@@ -45,6 +45,8 @@ export class RunnerController {
   private config: SetupConfig = defaultConfig();
   /** Seconds left on a step being resumed, consumed by the next runClock. */
   private resuming: number | null = null;
+  private identity: Identity | null = null;
+  private library: StoredBank[] = [];
   private readonly deps: RunnerDeps;
 
   constructor(deps: RunnerDeps) {
@@ -59,6 +61,19 @@ export class RunnerController {
 
   start(): void {
     this.showSetup();
+    // The account is a decoration on a screen that already works, so it is
+    // fetched after the first paint rather than delaying it.
+    void this.refreshAccount();
+  }
+
+  /** Pulls who we are and what we uploaded before; a no-op offline. */
+  private async refreshAccount(): Promise<void> {
+    const account = this.deps.account;
+    if (!account) return;
+    const [identity, library] = await Promise.all([account.me(), account.banks()]);
+    this.identity = identity;
+    this.library = library;
+    if (!this.sitting) this.showSetup();
   }
 
   // -- setup ---------------------------------------------------------------
@@ -82,10 +97,31 @@ export class RunnerController {
         config: this.config,
         allowedMinutes: RULES.writing.allowedMinutes,
         saved: this.savedRun(),
+        identity: this.identity,
+        library: this.library,
       }),
     );
 
     this.bindSetup();
+  }
+
+  private async openStored(id: string): Promise<void> {
+    const account = this.deps.account;
+    if (!account || !id) return;
+    this.showSetup('טוען את החוברת…');
+    try {
+      this.adoptBank(await account.open(id));
+    } catch {
+      this.showSetup('לא ניתן לטעון את החוברת.');
+    }
+  }
+
+  private async forgetStored(id: string): Promise<void> {
+    const account = this.deps.account;
+    if (!account || !id) return;
+    await account.forget(id);
+    this.library = this.library.filter((bank) => bank.id !== id);
+    this.showSetup();
   }
 
   private buildPreview(): Sitting | null {
@@ -152,6 +188,11 @@ export class RunnerController {
         this.deps.progress.clear();
         this.showSetup();
       };
+
+    for (const button of screen.all<HTMLElement>('.library-open'))
+      button.onclick = () => void this.openStored(button.dataset['bank'] ?? '');
+    for (const button of screen.all<HTMLElement>('.library-drop'))
+      button.onclick = () => void this.forgetStored(button.dataset['bank'] ?? '');
 
     const start = screen.byId('start');
     if (start) start.onclick = () => this.begin();

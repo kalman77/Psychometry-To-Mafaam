@@ -154,6 +154,26 @@ h1{font-size:clamp(34px,5.4vw,54px)}
 .card{background:var(--surface);border-radius:var(--r-lg);padding:clamp(22px,2.8vw,38px);
   box-shadow:var(--shadow)}
 .card h3{font-size:24px;letter-spacing:.015em;margin-bottom:14px;color:var(--ink)}
+/* who is signed in, and the way out */
+.account{display:flex;align-items:center;justify-content:flex-end;gap:14px;
+  font-size:13.5px;color:var(--muted);margin-block-end:-6px}
+.account-out{color:var(--muted);text-decoration:none;border-block-end:1px solid var(--line);
+  transition:color .2s var(--ease),border-color .2s var(--ease)}
+.account-out:hover{color:var(--ink);border-color:var(--sage)}
+
+/* booklets already extracted: uploading 6 MB twice is nobody's idea of a feature */
+.library-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.library-list li{display:flex;align-items:stretch;gap:8px}
+.library-open{flex:1;display:grid;gap:3px;text-align:start;cursor:pointer;
+  background:transparent;border:1px solid var(--line);border-radius:var(--r-md);
+  padding:13px 16px;font:inherit;color:var(--ink);
+  transition:background .22s var(--ease),border-color .22s var(--ease)}
+.library-open:hover{background:var(--sage-050);border-color:var(--sage-100)}
+.library-drop{width:42px;border:1px solid var(--line);border-radius:var(--r-md);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:15px;
+  transition:background .22s var(--ease),color .22s var(--ease)}
+.library-drop:hover{background:#FBEFE9;color:#8A4B39}
+
 /* an interrupted sitting, offered back */
 .card.resume{display:flex;align-items:center;justify-content:space-between;gap:20px;
   flex-wrap:wrap;border:1px solid var(--sage-100);background:var(--sage-050);
@@ -1216,6 +1236,60 @@ td.n .dot.na{background:var(--line)}
     }
   };
 
+  // src/infrastructure/web/server-account.ts
+  async function get(url) {
+    const response = await fetch(url, { headers: { "x-mapam": "1" } });
+    if (!response.ok) throw new Error(String(response.status));
+    return await response.json();
+  }
+  var ServerAccount = class {
+    async me() {
+      try {
+        return await get("/api/me");
+      } catch {
+        return null;
+      }
+    }
+    async banks() {
+      try {
+        return (await get("/api/banks")).banks;
+      } catch {
+        return [];
+      }
+    }
+    open(id) {
+      return get(`/api/banks/${encodeURIComponent(id)}`);
+    }
+    async forget(id) {
+      await fetch(`/api/banks/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-mapam": "1" }
+      });
+    }
+  };
+
+  // src/infrastructure/web/server-bank-file-reader.ts
+  var isPdf = (file) => file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  var ServerBankFileReader = class {
+    constructor(endpoint = "/api/extract") {
+      __publicField(this, "local", new BrowserBankFileReader());
+      __publicField(this, "endpoint");
+      this.endpoint = endpoint;
+    }
+    async read(file) {
+      if (!isPdf(file)) return this.local.read(file);
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/pdf", "x-mapam": "1" },
+        body: file
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.bank)
+        throw new Error(payload?.error ?? `\u05D4\u05D7\u05D9\u05DC\u05D5\u05E5 \u05E0\u05DB\u05E9\u05DC (${response.status}).`);
+      return payload.bank;
+    }
+  };
+
   // src/infrastructure/web/interval-countdown.ts
   var TICK_MS = 100;
   var IntervalCountdown = class {
@@ -1388,17 +1462,45 @@ td.n .dot.na{background:var(--line)}
     ${when(vm.message, `<div class="notice warn">${esc(vm.message)}</div>`)}
 
     <div id="drop" class="drop">
-      <b>\u05D2\u05E8\u05E8\u05D5 \u05DC\u05DB\u05D0\u05DF \u05D1\u05E0\u05E7 \u05E9\u05D0\u05DC\u05D5\u05EA</b><br>
-      <span style="color:var(--muted);font-size:15px">\u05D0\u05D5 \u05DC\u05D7\u05E6\u05D5 \u05DC\u05D1\u05D7\u05D9\u05E8\u05EA \u05E7\u05D5\u05D1\u05E5 JSON</span>
-      <input id="file" type="file" accept=".json,application/json" hidden>
+      <b>\u05D2\u05E8\u05E8\u05D5 \u05DC\u05DB\u05D0\u05DF \u05D7\u05D5\u05D1\u05E8\u05EA \u05D1\u05D7\u05D9\u05E0\u05D4 \u05D0\u05D5 \u05D1\u05E0\u05E7 \u05E9\u05D0\u05DC\u05D5\u05EA</b><br>
+      <span style="color:var(--muted);font-size:15px">PDF \u05E9\u05DC \u05D7\u05D5\u05D1\u05E8\u05EA, \u05D0\u05D5 \u05E7\u05D5\u05D1\u05E5 JSON \u05DE\u05D5\u05DB\u05DF</span>
+      <input id="file" type="file" accept=".json,application/json,.pdf,application/pdf" hidden>
     </div>
     <div style="text-align:center;margin-block-start:-8px">
       <button class="btn quiet" id="demo">\u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05DE\u05D1\u05E0\u05E7 \u05D4\u05D3\u05D5\u05D2\u05DE\u05D4</button>
     </div>
 
+    ${when(vm.identity, vm.identity ? renderAccount(vm.identity) : "")}
+    ${when(vm.library.length, renderLibrary(vm.library))}
     ${when(vm.saved, vm.saved ? renderResume(vm.saved) : "")}
     ${vm.bank ? vm.problems.length ? renderProblems(vm.problems) : renderReady(vm) : ""}
   </div></div>`;
+  }
+  function renderAccount(identity) {
+    return `
+  <div class="account">
+    <span>${esc(identity.name)}</span>
+    <a href="/logout" class="account-out">\u05D9\u05E6\u05D9\u05D0\u05D4</a>
+  </div>`;
+  }
+  var megabytes = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
+  function renderLibrary(banks) {
+    return `
+  <div class="card library">
+    <h3>\u05D4\u05D7\u05D5\u05D1\u05E8\u05D5\u05EA \u05E9\u05DC\u05DB\u05DD</h3>
+    <ul class="library-list">
+      ${banks.map(
+      (bank) => `
+        <li>
+          <button class="library-open" data-bank="${esc(bank.id)}">
+            <b>${esc(bank.title)}</b>
+            <span class="tag">${bank.items} \u05E9\u05D0\u05DC\u05D5\u05EA \xB7 ${megabytes(bank.bytes)}</span>
+          </button>
+          <button class="library-drop" data-bank="${esc(bank.id)}" aria-label="\u05DE\u05D7\u05D9\u05E7\u05D4">\u2715</button>
+        </li>`
+    ).join("")}
+    </ul>
+  </div>`;
   }
   function ago(savedAt) {
     const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 6e4));
@@ -1622,6 +1724,8 @@ td.n .dot.na{background:var(--line)}
       __publicField(this, "config", defaultConfig());
       /** Seconds left on a step being resumed, consumed by the next runClock. */
       __publicField(this, "resuming", null);
+      __publicField(this, "identity", null);
+      __publicField(this, "library", []);
       __publicField(this, "deps");
       this.deps = deps;
     }
@@ -1632,6 +1736,16 @@ td.n .dot.na{background:var(--line)}
     }
     start() {
       this.showSetup();
+      void this.refreshAccount();
+    }
+    /** Pulls who we are and what we uploaded before; a no-op offline. */
+    async refreshAccount() {
+      const account = this.deps.account;
+      if (!account) return;
+      const [identity, library] = await Promise.all([account.me(), account.banks()]);
+      this.identity = identity;
+      this.library = library;
+      if (!this.sitting) this.showSetup();
     }
     // -- setup ---------------------------------------------------------------
     showSetup(message = null) {
@@ -1650,10 +1764,29 @@ td.n .dot.na{background:var(--line)}
           preview,
           config: this.config,
           allowedMinutes: RULES.writing.allowedMinutes,
-          saved: this.savedRun()
+          saved: this.savedRun(),
+          identity: this.identity,
+          library: this.library
         })
       );
       this.bindSetup();
+    }
+    async openStored(id) {
+      const account = this.deps.account;
+      if (!account || !id) return;
+      this.showSetup("\u05D8\u05D5\u05E2\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA\u2026");
+      try {
+        this.adoptBank(await account.open(id));
+      } catch {
+        this.showSetup("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA.");
+      }
+    }
+    async forgetStored(id) {
+      const account = this.deps.account;
+      if (!account || !id) return;
+      await account.forget(id);
+      this.library = this.library.filter((bank) => bank.id !== id);
+      this.showSetup();
     }
     buildPreview() {
       try {
@@ -1713,6 +1846,10 @@ td.n .dot.na{background:var(--line)}
           this.deps.progress.clear();
           this.showSetup();
         };
+      for (const button of screen.all(".library-open"))
+        button.onclick = () => void this.openStored(button.dataset["bank"] ?? "");
+      for (const button of screen.all(".library-drop"))
+        button.onclick = () => void this.forgetStored(button.dataset["bank"] ?? "");
       const start = screen.byId("start");
       if (start) start.onclick = () => this.begin();
     }
@@ -2010,6 +2147,7 @@ td.n .dot.na{background:var(--line)}
     return element;
   }
   function bootstrap() {
+    const served = location.protocol !== "file:";
     const controller = new RunnerController({
       screen: new DomScreen(required("#app")),
       chrome: new DomChrome(
@@ -2019,7 +2157,10 @@ td.n .dot.na{background:var(--line)}
         required("#rail i")
       ),
       countdown: new IntervalCountdown(),
-      bankFiles: new BrowserBankFileReader(),
+      // Opened from a file:// URL there is no server to ask, so PDFs are only
+      // offered when one served this page.
+      bankFiles: served ? new ServerBankFileReader() : new BrowserBankFileReader(),
+      account: served ? new ServerAccount() : null,
       saver: new JsonFileSaver(),
       progress: new LocalProgressStore(),
       buildSitting: new BuildSittingUseCase(seededRandomFactory),

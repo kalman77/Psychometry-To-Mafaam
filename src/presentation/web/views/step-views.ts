@@ -11,6 +11,7 @@ import { domainLabel, typeLabel } from '../../../domain/rules/labels.ts';
 import { formatDuration } from '../../../domain/support/duration.ts';
 import { directionOf, esc, isHebrew, paragraphs, when } from '../html.ts';
 import type { ItemViewModel } from './step-views/item-view-model.ts';
+import { renderNotice, SENDING_NOT_READY } from './notice.ts';
 
 export function renderSectionIntro(step: SectionIntroStep): string {
   return `
@@ -65,6 +66,7 @@ export function renderWriting(step: WritingStep): string {
       ${when(step.canSend, `<button class="btn quiet" id="send-essay">לשלוח לבדיקה</button>`)}
       <span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span>
     </div>
+    ${when(step.canSend, renderNotice(SENDING_NOT_READY))}
   </div>`;
 }
 

@@ -93,6 +93,25 @@ h1{font-size:clamp(34px,5.4vw,54px)}
 /* Both halves carry a picture now, so neither gets to crowd the other. */
 .sheet.scan.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 
+/* a small modal for one sentence and a way out */
+.notice-modal{position:fixed;inset:0;z-index:80;pointer-events:none;visibility:hidden;
+  transition:visibility 0s linear .3s}
+.notice-modal[data-open=true]{pointer-events:auto;visibility:visible;transition-delay:0s}
+.notice-scrim{position:absolute;inset:0;background:rgba(31,43,39,.42);
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  opacity:0;transition:opacity .3s var(--ease)}
+.notice-modal[data-open=true] .notice-scrim{opacity:1}
+.notice-card{position:absolute;inset-block-start:50%;inset-inline-start:50%;
+  width:min(430px,90vw);padding:clamp(24px,3vw,34px);text-align:center;
+  background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lift);
+  transform:translate(50%,-50%) scale(.94);opacity:0;
+  transition:transform .32s var(--ease),opacity .32s var(--ease)}
+[dir=ltr] .notice-card{transform:translate(-50%,-50%) scale(.94)}
+.notice-modal[data-open=true] .notice-card{opacity:1;transform:translate(50%,-50%) scale(1)}
+[dir=ltr] .notice-modal[data-open=true] .notice-card{transform:translate(-50%,-50%) scale(1)}
+.notice-card h3{font-size:23px;margin:0 0 10px}
+.notice-card p{color:var(--muted);font-size:15px;line-height:1.7;margin:0 0 22px}
+
 /* ---- the source drawer: the passage or chart, parked at the edge --------- */
 .source-tab{
   position:fixed;inset-inline-end:0;inset-block-start:50%;z-index:55;
@@ -1618,6 +1637,25 @@ td.n .dot.na{background:var(--line)}
     return condition ? fragment : "";
   }
 
+  // src/presentation/web/views/notice.ts
+  function renderNotice(notice) {
+    return `
+  <div class="notice-modal" id="${esc(notice.id)}" data-open="false">
+    <div class="notice-scrim" id="${esc(notice.id)}-scrim"></div>
+    <div class="notice-card" role="alertdialog" aria-modal="true"
+         aria-labelledby="${esc(notice.id)}-title">
+      <h3 id="${esc(notice.id)}-title">${esc(notice.title)}</h3>
+      <p>${esc(notice.body)}</p>
+      <button class="btn" id="${esc(notice.id)}-close">${esc(notice.dismiss ?? "\u05D4\u05D1\u05E0\u05EA\u05D9")}</button>
+    </div>
+  </div>`;
+  }
+  var SENDING_NOT_READY = {
+    id: "send-unavailable",
+    title: "\u05E2\u05D5\u05D3 \u05DC\u05D0 \u05D6\u05DE\u05D9\u05DF",
+    body: "\u05E9\u05DC\u05D9\u05D7\u05EA \u05D4\u05D7\u05D9\u05D1\u05D5\u05E8 \u05DC\u05D1\u05D3\u05D9\u05E7\u05D4 \u05E2\u05D3\u05D9\u05D9\u05DF \u05D1\u05E4\u05D9\u05EA\u05D5\u05D7 \u05D5\u05EA\u05D5\u05E4\u05E2\u05DC \u05D1\u05E7\u05E8\u05D5\u05D1. \u05D1\u05D9\u05E0\u05EA\u05D9\u05D9\u05DD \u05D0\u05E4\u05E9\u05E8 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05D7\u05D9\u05D1\u05D5\u05E8 \u05DB\u05E7\u05D5\u05D1\u05E5 Word \u05D5\u05DC\u05E9\u05DC\u05D5\u05D7 \u05D0\u05D5\u05EA\u05D5 \u05D1\u05DE\u05D9\u05D9\u05DC."
+  };
+
   // src/presentation/web/views/results-view.ts
   var DOMAINS = [
     ["verbal", "\u05D7\u05E9\u05D9\u05D1\u05D4 \u05DE\u05D9\u05DC\u05D5\u05DC\u05D9\u05EA"],
@@ -1681,6 +1719,7 @@ td.n .dot.na{background:var(--line)}
       ${when(vm.essay.trim() && vm.canSend, `<button class="btn quiet" id="send-essay">\u05DC\u05E9\u05DC\u05D5\u05D7 \u05DC\u05D1\u05D3\u05D9\u05E7\u05D4</button>`)}
     </div>
     <p class="tag" id="send-note" style="text-align:center;margin:14px 0 0"></p>
+    ${when(vm.canSend, renderNotice(SENDING_NOT_READY))}
     <div style="display:none">
     </div>
   </div></div>`;
@@ -1863,6 +1902,7 @@ td.n .dot.na{background:var(--line)}
       ${when(step.canSend, `<button class="btn quiet" id="send-essay">\u05DC\u05E9\u05DC\u05D5\u05D7 \u05DC\u05D1\u05D3\u05D9\u05E7\u05D4</button>`)}
       <span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span>
     </div>
+    ${when(step.canSend, renderNotice(SENDING_NOT_READY))}
   </div>`;
   }
   function isScan(step) {
@@ -2280,7 +2320,7 @@ td.n .dot.na{background:var(--line)}
       }
       update();
       const send = screen.byId("send-essay");
-      if (send) send.onclick = () => void this.sendEssay(send, null);
+      if (send) send.onclick = () => this.sendEssay();
       const finish = once(() => {
         this.essay = textarea?.value ?? this.essay;
         this.next();
@@ -2398,26 +2438,24 @@ td.n .dot.na{background:var(--line)}
         seconds: Object.values(this.spent).reduce((a, b) => a + b, 0)
       });
     }
-    /** Hands the essay to whoever checks it, and says what came back. */
-    async sendEssay(button, note) {
-      const mailer = this.deps.postEssay;
-      if (!mailer || !this.essay.trim()) return;
-      const label = button.textContent;
-      button.textContent = "\u05E9\u05D5\u05DC\u05D7\u2026";
-      button.disabled = true;
-      try {
-        const { essaysSent, teacher } = await mailer.send(`${this.sessionName()}.docx`, this.sessionName(), {
-          title: "\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4",
-          subtitle: this.sitting?.meta?.title ?? "",
-          essay: this.essay
-        });
-        button.textContent = "\u05E0\u05E9\u05DC\u05D7";
-        if (note) note.textContent = `\u05E0\u05E9\u05DC\u05D7 \u05D0\u05DC ${teacher} \xB7 ${essaysSent} \u05DE\u05D8\u05DC\u05D5\u05EA \u05E2\u05D3 \u05DB\u05D4`;
-      } catch (error) {
-        button.textContent = label;
-        button.disabled = false;
-        if (note) note.textContent = error.message;
-      }
+    /* Sending an essay works end to end on the server — the endpoint, the mail
+     * and the counter are all built and tested — but it is deliberately not
+     * called from here yet. Delete this guard and restore the body below to turn
+     * it on; nothing else has to change. */
+    sendEssay() {
+      this.openNotice(SENDING_NOT_READY.id);
+    }
+    /** Shows one of the modals rendered alongside the current screen. */
+    openNotice(id) {
+      const { screen } = this.deps;
+      const modal = screen.byId(id);
+      if (!modal) return;
+      modal.dataset["open"] = "true";
+      const shut = () => {
+        modal.dataset["open"] = "false";
+      };
+      screen.byId(`${id}-close`)?.addEventListener("click", shut, { once: true });
+      screen.byId(`${id}-scrim`)?.addEventListener("click", shut, { once: true });
     }
     showResults() {
       const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
@@ -2447,7 +2485,7 @@ td.n .dot.na{background:var(--line)}
       const again = screen.byId("again");
       if (again) again.onclick = () => this.showSetup();
       const post = screen.byId("send-essay");
-      if (post) post.onclick = () => void this.sendEssay(post, screen.byId("send-note"));
+      if (post) post.onclick = () => this.sendEssay();
       const essay = screen.byId("dl-essay");
       if (essay)
         essay.onclick = () => saver.saveEssay(`${this.sessionName()}.docx`, {

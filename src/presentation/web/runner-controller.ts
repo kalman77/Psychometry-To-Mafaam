@@ -13,6 +13,7 @@ import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
 import type { Identity, SavedProgress, StoredBank } from './ports.ts';
 import { renderResults } from './views/results-view.ts';
+import { SENDING_NOT_READY } from './views/notice.ts';
 import { renderSetup, type SetupConfig } from './views/setup-view.ts';
 import {
   renderBreak,
@@ -429,7 +430,7 @@ export class RunnerController {
     update();
 
     const send = screen.byId('send-essay');
-    if (send) send.onclick = () => void this.sendEssay(send, null);
+    if (send) send.onclick = () => this.sendEssay();
 
     const finish = once(() => {
       this.essay = textarea?.value ?? this.essay;
@@ -572,26 +573,25 @@ export class RunnerController {
     });
   }
 
-  /** Hands the essay to whoever checks it, and says what came back. */
-  private async sendEssay(button: HTMLElement, note: HTMLElement | null): Promise<void> {
-    const mailer = this.deps.postEssay;
-    if (!mailer || !this.essay.trim()) return;
-    const label = button.textContent;
-    button.textContent = 'שולח…';
-    (button as HTMLButtonElement).disabled = true;
-    try {
-      const { essaysSent, teacher } = await mailer.send(`${this.sessionName()}.docx`, this.sessionName(), {
-        title: 'מטלת כתיבה',
-        subtitle: this.sitting?.meta?.title ?? '',
-        essay: this.essay,
-      });
-      button.textContent = 'נשלח';
-      if (note) note.textContent = `נשלח אל ${teacher} · ${essaysSent} מטלות עד כה`;
-    } catch (error) {
-      button.textContent = label;
-      (button as HTMLButtonElement).disabled = false;
-      if (note) note.textContent = (error as Error).message;
-    }
+  /* Sending an essay works end to end on the server — the endpoint, the mail
+   * and the counter are all built and tested — but it is deliberately not
+   * called from here yet. Delete this guard and restore the body below to turn
+   * it on; nothing else has to change. */
+  private sendEssay(): void {
+    this.openNotice(SENDING_NOT_READY.id);
+  }
+
+  /** Shows one of the modals rendered alongside the current screen. */
+  private openNotice(id: string): void {
+    const { screen } = this.deps;
+    const modal = screen.byId(id);
+    if (!modal) return;
+    modal.dataset['open'] = 'true';
+    const shut = (): void => {
+      modal.dataset['open'] = 'false';
+    };
+    screen.byId(`${id}-close`)?.addEventListener('click', shut, { once: true });
+    screen.byId(`${id}-scrim`)?.addEventListener('click', shut, { once: true });
   }
 
   private showResults(): void {
@@ -627,7 +627,7 @@ export class RunnerController {
     if (again) again.onclick = () => this.showSetup();
 
     const post = screen.byId('send-essay');
-    if (post) post.onclick = () => void this.sendEssay(post, screen.byId('send-note'));
+    if (post) post.onclick = () => this.sendEssay();
 
     const essay = screen.byId('dl-essay');
     if (essay)

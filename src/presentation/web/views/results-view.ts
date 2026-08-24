@@ -5,6 +5,7 @@ import type { Domain } from '../../../domain/model/bank.ts';
 import { typeLabel } from '../../../domain/rules/labels.ts';
 import { formatDuration } from '../../../domain/support/duration.ts';
 import { esc, paragraphs, when } from '../html.ts';
+import { renderNotice, SENDING_NOT_READY } from './notice.ts';
 
 const DOMAINS: [Domain, string][] = [
   ['verbal', 'חשיבה מילולית'],
@@ -78,6 +79,7 @@ export function renderResults(vm: ResultsViewModel): string {
       ${when(vm.essay.trim() && vm.canSend, `<button class="btn quiet" id="send-essay">לשלוח לבדיקה</button>`)}
     </div>
     <p class="tag" id="send-note" style="text-align:center;margin:14px 0 0"></p>
+    ${when(vm.canSend, renderNotice(SENDING_NOT_READY))}
     <div style="display:none">
     </div>
   </div></div>`;

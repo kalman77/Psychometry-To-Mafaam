@@ -388,15 +388,29 @@ export class RunnerController {
 
   private showWriting(step: Extract<Step, { kind: 'writing' }>): void {
     const { screen } = this.deps;
-    screen.render(renderWriting(step));
+    screen.render(renderWriting({ ...step, essay: this.essay }));
 
     const textarea = screen.byId<HTMLTextAreaElement>('essay');
     const words = screen.byId('words');
     const lines = screen.byId('lines');
     const meter = screen.byId('lw');
 
+    // Half an hour of typing used to be held in memory alone: persist() only
+    // ran on advancing or answering, so closing the tab lost the whole essay.
+    // Written on a timer rather than per keystroke — the blob is tiny, but
+    // there is no reason to serialise it on every letter.
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const saveSoon = (): void => {
+      if (pending !== null) clearTimeout(pending);
+      pending = setTimeout(() => {
+        pending = null;
+        this.persist();
+      }, 1000);
+    };
+
     const update = () => {
       this.essay = textarea?.value ?? '';
+      saveSoon();
       const wordCount = (this.essay.trim().match(/\S+/g) ?? []).length;
       // A line on paper is ~62 characters; long paragraphs wrap into several.
       const lineCount = this.essay
@@ -414,6 +428,7 @@ export class RunnerController {
     update();
 
     const finish = once(() => {
+      if (pending !== null) clearTimeout(pending);
       this.essay = textarea?.value ?? this.essay;
       this.next();
     });
@@ -523,6 +538,14 @@ export class RunnerController {
 
   // -- results -------------------------------------------------------------
 
+  /** What to call a file from this sitting: the booklet's own sitting when it
+   *  named one, its title otherwise, and a plain fallback for a bank that
+   *  carries neither. */
+  private sessionName(): string {
+    const meta = this.sitting?.meta ?? {};
+    return meta.session ?? meta.title ?? 'מפעם';
+  }
+
   private showResults(): void {
     const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
     countdown.stop();
@@ -542,11 +565,25 @@ export class RunnerController {
     });
 
     screen.render(
-      renderResults({ report: attempt.score, spent: this.spent, essay: this.essay }),
+      renderResults({
+        report: attempt.score,
+        spent: this.spent,
+        essay: this.essay,
+        session: this.sessionName(),
+      }),
     );
 
     const again = screen.byId('again');
     if (again) again.onclick = () => this.showSetup();
+
+    const essay = screen.byId('dl-essay');
+    if (essay)
+      essay.onclick = () =>
+        saver.saveEssay(`${this.sessionName()}.docx`, {
+          title: 'מטלת כתיבה',
+          subtitle: this.sitting?.meta?.title ?? '',
+          essay: this.essay,
+        });
 
     const download = screen.byId('dl');
     if (download)

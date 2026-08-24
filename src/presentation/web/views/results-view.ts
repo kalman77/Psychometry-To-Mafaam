@@ -74,6 +74,7 @@ export function renderResults(vm: ResultsViewModel): string {
     <div class="controls">
       <button class="btn" id="again">להריץ שוב</button>
       <button class="btn quiet" id="dl">להוריד את התשובות</button>
+      ${when(vm.essay.trim(), `<button class="btn quiet" id="dl-essay">להוריד את החיבור (Word)</button>`)}
     </div>
   </div></div>`;
 }

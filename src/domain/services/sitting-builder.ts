@@ -43,6 +43,7 @@ export function buildSitting(
       intro: bank.writingTask.intro ?? null,
       minLines: bank.writingTask.minLines ?? rules.writing.minLines,
       image: bank.writingTask.image ?? null,
+      essay: '',
     });
     push({ kind: 'break', seconds: rules.breaks.majorSeconds, label: 'הפסקה', after: 'writing' });
   }

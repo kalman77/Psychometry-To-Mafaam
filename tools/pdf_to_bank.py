@@ -126,6 +126,9 @@ COVER_LINES = 6
 # "מועד אביב 2025" running header, which here is the very thing that tells one
 # booklet from another.
 COVER_STOP = re.compile(r'כל\s+הזכויות\s+שמורות|אין\s+להעתיק|^\s*\d+\s*$')
+# "מועד אביב 2025" — the sitting this booklet belongs to, and the shortest
+# thing anyone would call it when naming a file.
+SESSION = re.compile(r'מועד\s+\S+\s+\d{4}')
 
 ANSWER_KEY_PAGE = re.compile(r'מפתח\s+תשובות\s+נכונות')
 BLANK_PAGE = re.compile(r'עמוד\s+ריק')
@@ -215,11 +218,12 @@ def split_pages(text):
     return pages
 
 
-def cover_title(lines):
+def cover_meta(lines):
     """The booklet's name, off its first page.
 
     Everything above the copyright notice, so the run ends where the booklet's
-    own front matter does rather than at a guessed line count."""
+    own front matter does rather than at a guessed line count. Returns the whole
+    name and, separately, the sitting within it."""
     title = []
     for line in lines:
         line = line.strip()
@@ -228,12 +232,15 @@ def cover_title(lines):
         if COVER_STOP.search(line) or len(title) >= COVER_LINES:
             break
         title.append(line)
-    return ' '.join(title) or None
+    if not title:
+        return None, None
+    found = SESSION.search(' '.join(title))
+    return ' '.join(title), (found.group(0) if found else None)
 
 
 def parse(text):
     pages = split_pages(text)
-    chapters, answer_key, writing, title = [], {}, None, None
+    chapters, answer_key, writing, title, session = [], {}, None, None, None
     current = None
 
     for page_no, raw_page in enumerate(pages, 1):
@@ -241,7 +248,7 @@ def parse(text):
         joined = '\n'.join(lines)
 
         if page_no == 1:
-            title = cover_title(lines)
+            title, session = cover_meta(lines)
 
         if ANSWER_KEY_PAGE.search(joined):
             answer_key.update(parse_answer_key(lines))
@@ -286,7 +293,7 @@ def parse(text):
             out.append({'domain': ch['domain'], 'chapter': ch['chapter'],
                         'pages': ch['pages'], 'runs': ch['runs'],
                         'items': items, 'stimuli': stimuli, 'notes': notes})
-    return out, answer_key, writing, title
+    return out, answer_key, writing, title, session
 
 
 def parse_writing_task(lines):
@@ -987,7 +994,7 @@ def add_figures(chapters, pdf, dpi, whole=False):
 
 # ---------------------------------------------------------------------------
 
-def to_bank(chapters, answer_key, title, writing=None):
+def to_bank(chapters, answer_key, title, writing=None, session=None):
     sections, missing = [], 0
     for ch in chapters:
         items = []
@@ -1012,8 +1019,11 @@ def to_bank(chapters, answer_key, title, writing=None):
             'stimuli': [{k: v for k, v in s.items() if k != 'range'} for s in ch['stimuli']],
             'items': items,
         })
-    bank = {'meta': {'id': 'extracted', 'title': title, 'language': 'he',
-                     'source': 'pdf_to_bank.py'}}
+    meta = {'id': 'extracted', 'title': title, 'language': 'he',
+            'source': 'pdf_to_bank.py'}
+    if session:
+        meta['session'] = session
+    bank = {'meta': meta}
     if writing:
         bank['writingTask'] = {k: v for k, v in writing.items() if k != 'page'}
     bank['sections'] = sections
@@ -1088,7 +1098,7 @@ def main():
         print('wrote', a.dump_text)
         return
 
-    chapters, key, writing, found = parse(text)
+    chapters, key, writing, found, session = parse(text)
     if not chapters:
         sys.exit('No chapters recognised. Check the running headers with --dump-text.')
 
@@ -1101,7 +1111,8 @@ def main():
             add_writing_image(writing, a.pdf, a.image_dpi)
 
     # An explicit --title wins; otherwise the booklet names itself.
-    bank, missing = to_bank(chapters, key, a.title or found or 'בחינה מחולצת', writing)
+    bank, missing = to_bank(
+        chapters, key, a.title or found or 'בחינה מחולצת', writing, session)
     if figures:
         items_done, items_wide, stimuli_done, figure_notes = figures
         if a.question_images:

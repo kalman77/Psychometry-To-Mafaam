@@ -7,4 +7,6 @@ export interface ResultsViewModel {
   report: ScoreReport;
   spent: TimeSpent;
   essay: string;
+  /** Names the .docx download; the booklet's sitting when it has one. */
+  session: string;
 }

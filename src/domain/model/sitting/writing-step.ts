@@ -10,4 +10,7 @@ export interface WritingStep extends StepBase {
   intro: string | null;
   minLines: number;
   image: string | null;
+  /** What has been written so far. Empty on a fresh sitting; refilled when a
+   *  half-written essay is resumed. */
+  essay: string;
 }

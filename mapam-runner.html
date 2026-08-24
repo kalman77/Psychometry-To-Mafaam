@@ -761,7 +761,8 @@ td.n .dot.na{background:var(--line)}
         prompt: bank.writingTask.prompt,
         intro: bank.writingTask.intro ?? null,
         minLines: bank.writingTask.minLines ?? rules.writing.minLines,
-        image: bank.writingTask.image ?? null
+        image: bank.writingTask.image ?? null,
+        essay: ""
       });
       push({ kind: "break", seconds: rules.breaks.majorSeconds, label: "\u05D4\u05E4\u05E1\u05E7\u05D4", after: "writing" });
     }
@@ -1323,16 +1324,166 @@ td.n .dot.na{background:var(--line)}
     }
   };
 
+  // src/infrastructure/web/zip.ts
+  var CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+      table[i] = c >>> 0;
+    }
+    return table;
+  })();
+  function crc32(data) {
+    let c = 4294967295;
+    for (const byte of data) c = CRC_TABLE[(c ^ byte) & 255] ^ c >>> 8;
+    return (c ^ 4294967295) >>> 0;
+  }
+  var Writer = class {
+    constructor() {
+      __publicField(this, "parts", []);
+      __publicField(this, "length", 0);
+    }
+    push(bytes) {
+      this.parts.push(bytes);
+      this.length += bytes.length;
+    }
+    u16(value) {
+      this.push(new Uint8Array([value & 255, value >>> 8 & 255]));
+    }
+    u32(value) {
+      this.push(
+        new Uint8Array([
+          value & 255,
+          value >>> 8 & 255,
+          value >>> 16 & 255,
+          value >>> 24 & 255
+        ])
+      );
+    }
+    concat() {
+      const out = new Uint8Array(this.length);
+      let at = 0;
+      for (const part of this.parts) {
+        out.set(part, at);
+        at += part.length;
+      }
+      return out;
+    }
+  };
+  function zip(entries) {
+    const encoder = new TextEncoder();
+    const body = new Writer();
+    const directory = new Writer();
+    for (const entry of entries) {
+      const name = encoder.encode(entry.name);
+      const sum = crc32(entry.data);
+      const offset = body.length;
+      body.u32(67324752);
+      body.u16(20);
+      body.u16(2048);
+      body.u16(0);
+      body.u16(0);
+      body.u16(0);
+      body.u32(sum);
+      body.u32(entry.data.length);
+      body.u32(entry.data.length);
+      body.u16(name.length);
+      body.u16(0);
+      body.push(name);
+      body.push(entry.data);
+      directory.u32(33639248);
+      directory.u16(20);
+      directory.u16(20);
+      directory.u16(2048);
+      directory.u16(0);
+      directory.u16(0);
+      directory.u16(0);
+      directory.u32(sum);
+      directory.u32(entry.data.length);
+      directory.u32(entry.data.length);
+      directory.u16(name.length);
+      directory.u16(0);
+      directory.u16(0);
+      directory.u16(0);
+      directory.u16(0);
+      directory.u32(0);
+      directory.u32(offset);
+      directory.push(name);
+    }
+    const end = new Writer();
+    end.u32(101010256);
+    end.u16(0);
+    end.u16(0);
+    end.u16(entries.length);
+    end.u16(entries.length);
+    end.u32(directory.length);
+    end.u32(body.length);
+    end.u16(0);
+    const out = new Uint8Array(body.length + directory.length + end.length);
+    out.set(body.concat(), 0);
+    out.set(directory.concat(), body.length);
+    out.set(end.concat(), body.length + directory.length);
+    return new Blob([out], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    });
+  }
+
+  // src/infrastructure/web/docx.ts
+  var XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  var CONTENT_TYPES = `${XML}
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+  var RELS = `${XML}
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+  var escapeXml = (value) => value.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]
+  );
+  function paragraph(text, bold = false) {
+    const runs = text.split("\n").map((line) => escapeXml(line)).join('</w:t><w:br/><w:t xml:space="preserve">');
+    return `<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/>${bold ? "<w:b/>" : ""}</w:rPr><w:t xml:space="preserve">${runs}</w:t></w:r></w:p>`;
+  }
+  function essayDocx(document2) {
+    const blocks = [paragraph(document2.title, true)];
+    if (document2.subtitle) blocks.push(paragraph(document2.subtitle));
+    blocks.push(paragraph(""));
+    for (const block of document2.essay.split(/\n{2,}/)) blocks.push(paragraph(block));
+    const body = `${XML}
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>${blocks.join("")}<w:sectPr><w:bidi/></w:sectPr></w:body>
+</w:document>`;
+    const encoder = new TextEncoder();
+    return zip([
+      { name: "[Content_Types].xml", data: encoder.encode(CONTENT_TYPES) },
+      { name: "_rels/.rels", data: encoder.encode(RELS) },
+      { name: "word/document.xml", data: encoder.encode(body) }
+    ]);
+  }
+
   // src/infrastructure/web/json-file-saver.ts
   var JsonFileSaver = class {
     save(filename, payload) {
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      this.saveBlob(
+        filename,
+        new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+      );
+    }
+    saveEssay(filename, document2) {
+      this.saveBlob(filename, essayDocx(document2));
+    }
+    saveBlob(filename, blob) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;
       link.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     }
   };
 
@@ -1445,6 +1596,7 @@ td.n .dot.na{background:var(--line)}
     <div class="controls">
       <button class="btn" id="again">\u05DC\u05D4\u05E8\u05D9\u05E5 \u05E9\u05D5\u05D1</button>
       <button class="btn quiet" id="dl">\u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05EA\u05E9\u05D5\u05D1\u05D5\u05EA</button>
+      ${when(vm.essay.trim(), `<button class="btn quiet" id="dl-essay">\u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05D7\u05D9\u05D1\u05D5\u05E8 (Word)</button>`)}
     </div>
   </div></div>`;
   }
@@ -1614,7 +1766,7 @@ td.n .dot.na{background:var(--line)}
         ${when(step.prompt, `<div class="stem">${esc(step.prompt)}</div>`)}
         ${when(step.image, `<img class="scan-passage" src="${esc(step.image)}" alt="">`)}
       </div>
-      <textarea id="essay" placeholder="\u05DB\u05EA\u05D1\u05D5 \u05DB\u05D0\u05DF\u2026" spellcheck="false"></textarea>
+      <textarea id="essay" placeholder="\u05DB\u05EA\u05D1\u05D5 \u05DB\u05D0\u05DF\u2026" spellcheck="false">${esc(step.essay)}</textarea>
       <div class="meter">
         <span id="lw">\u05E9\u05D5\u05E8\u05D5\u05EA <b id="lines">0</b> \u05DE\u05EA\u05D5\u05DA ${step.minLines}</span>
         <span>\u05DE\u05D9\u05DC\u05D9\u05DD <b id="words">0</b></span>
@@ -2015,13 +2167,22 @@ td.n .dot.na{background:var(--line)}
     }
     showWriting(step) {
       const { screen } = this.deps;
-      screen.render(renderWriting(step));
+      screen.render(renderWriting({ ...step, essay: this.essay }));
       const textarea = screen.byId("essay");
       const words = screen.byId("words");
       const lines = screen.byId("lines");
       const meter = screen.byId("lw");
+      let pending = null;
+      const saveSoon = () => {
+        if (pending !== null) clearTimeout(pending);
+        pending = setTimeout(() => {
+          pending = null;
+          this.persist();
+        }, 1e3);
+      };
       const update = () => {
         this.essay = textarea?.value ?? "";
+        saveSoon();
         const wordCount = (this.essay.trim().match(/\S+/g) ?? []).length;
         const lineCount = this.essay.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 62)), 0);
         if (words) words.textContent = String(wordCount);
@@ -2034,6 +2195,7 @@ td.n .dot.na{background:var(--line)}
       }
       update();
       const finish = once(() => {
+        if (pending !== null) clearTimeout(pending);
         this.essay = textarea?.value ?? this.essay;
         this.next();
       });
@@ -2121,6 +2283,13 @@ td.n .dot.na{background:var(--line)}
       });
     }
     // -- results -------------------------------------------------------------
+    /** What to call a file from this sitting: the booklet's own sitting when it
+     *  named one, its title otherwise, and a plain fallback for a bank that
+     *  carries neither. */
+    sessionName() {
+      const meta = this.sitting?.meta ?? {};
+      return meta.session ?? meta.title ?? "\u05DE\u05E4\u05E2\u05DD";
+    }
     showResults() {
       const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
       countdown.stop();
@@ -2137,10 +2306,22 @@ td.n .dot.na{background:var(--line)}
         essay: this.essay
       });
       screen.render(
-        renderResults({ report: attempt.score, spent: this.spent, essay: this.essay })
+        renderResults({
+          report: attempt.score,
+          spent: this.spent,
+          essay: this.essay,
+          session: this.sessionName()
+        })
       );
       const again = screen.byId("again");
       if (again) again.onclick = () => this.showSetup();
+      const essay = screen.byId("dl-essay");
+      if (essay)
+        essay.onclick = () => saver.saveEssay(`${this.sessionName()}.docx`, {
+          title: "\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4",
+          subtitle: this.sitting?.meta?.title ?? "",
+          essay: this.essay
+        });
       const download = screen.byId("dl");
       if (download)
         download.onclick = () => saver.save(`${sitting.meta.id ?? "mapam"}-attempt.json`, attempt);

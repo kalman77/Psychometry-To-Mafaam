@@ -54,7 +54,7 @@ export function renderWriting(step: WritingStep): string {
         ${when(step.prompt, `<div class="stem">${esc(step.prompt)}</div>`)}
         ${when(step.image, `<img class="scan-passage" src="${esc(step.image)}" alt="">`)}
       </div>
-      <textarea id="essay" placeholder="כתבו כאן…" spellcheck="false"></textarea>
+      <textarea id="essay" placeholder="כתבו כאן…" spellcheck="false">${esc(step.essay)}</textarea>
       <div class="meter">
         <span id="lw">שורות <b id="lines">0</b> מתוך ${step.minLines}</span>
         <span>מילים <b id="words">0</b></span>

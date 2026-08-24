@@ -8,6 +8,7 @@ export type { BankFileReader } from './ports/bank-file-reader.ts';
 export type { Chrome } from './ports/chrome.ts';
 export type { Countdown } from './ports/countdown.ts';
 export type { CountdownHandlers } from './ports/countdown-handlers.ts';
+export type { EssayDocument } from './ports/essay-document.ts';
 export type { FileSaver } from './ports/file-saver.ts';
 export type { KeyHandler } from './ports/key-handler.ts';
 export type { LoadedBank } from './ports/loaded-bank.ts';

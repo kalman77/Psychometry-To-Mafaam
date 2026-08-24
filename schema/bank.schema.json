@@ -31,6 +31,10 @@
         },
         "note": {
           "type": "string"
+        },
+        "session": {
+          "type": "string",
+          "description": "The sitting this booklet belongs to, e.g. \"מועד אביב 2025\"."
         }
       }
     },

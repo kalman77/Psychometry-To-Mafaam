@@ -5,5 +5,7 @@ export interface BankMeta {
   title?: string;
   language?: string;
   source?: string;
+  /** The sitting this booklet belongs to, e.g. "מועד אביב 2025". */
+  session?: string;
   note?: string;
 }

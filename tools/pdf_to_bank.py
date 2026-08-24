@@ -83,6 +83,14 @@ Q_MARK = re.compile(r'^\s*(?:\.(\d{1,2})|(\d{1,2})\.)\s+(?=\S)')
 # mixes directions sometimes puts the number at the head instead.
 RTL_Q_MARK = re.compile(r'(?:^|\s)\.(\d{1,2})(?:\s+\S{1,2})*\s*$')
 RTL_Q_HEAD = re.compile(r'^\s*\.(\d{1,2})\s*(?=\S)')
+# On a chart-heavy page a figure label can sit to the left of the number, so it
+# ends up neither at the head of the line nor at its tail: "משפחה .11איזה מה...".
+# Only tried when the other two miss, and the climbing check below is what keeps
+# it from firing on a number that happens to appear inside prose.
+# The digits must run straight into a Hebrew letter. Anything looser also
+# matches a date — "במאה ה .19-כייס נידון למוות" reads as question 19 and then
+# swallows the six that really follow it.
+RTL_Q_MID = re.compile(r'(?<=\s)\.(\d{1,2})(?=[\u0590-\u05FF])')
 
 # Option markers. LTR: "(1) body". RTL puts the digit last, with the body either
 # outside the mirrored parens ("חדר הלבשה : בגדים  ()1") or inside them ("(5 )1").
@@ -134,7 +142,16 @@ ANSWER_KEY_PAGE = re.compile(r'מפתח\s+תשובות\s+נכונות')
 BLANK_PAGE = re.compile(r'עמוד\s+ריק')
 # The quantitative chapters open with a formula sheet, itself a numbered list
 # (".11 זוויות פנימיות..."). It runs to the foot of the page.
-FORMULA_SHEET = re.compile(r'^\s*נוסחאות\s*$')
+#
+# Matched on the Hebrew alone: on a page dense with figures, stray labels land
+# on the heading's line ("aa            נוסחאות") and an anchored match misses
+# it — which lets the formula numbers through as questions.
+FORMULA_HEADING = 'נוסחאות'
+HEBREW_ONLY = re.compile(r'[^\u0590-\u05FF\s]+')
+
+
+def is_formula_heading(line):
+    return HEBREW_ONLY.sub('', line).split() == [FORMULA_HEADING]
 
 NOISE = [
     re.compile(r'כל\s+הזכויות\s+שמורות'),
@@ -273,7 +290,7 @@ def parse(text):
                 chapters.append(current)
         if current is None:
             continue
-        cut = next((i for i, l in enumerate(lines) if FORMULA_SHEET.match(l)), None)
+        cut = next((i for i, l in enumerate(lines) if is_formula_heading(l)), None)
         if cut is not None:
             lines = lines[:cut]
         else:
@@ -398,17 +415,41 @@ def is_rtl(lines):
 
 def split_questions(lines, rtl):
     """Chapter -> blocks, one per question number. On an RTL page the marker
-    ends the line, so the text that belongs to it is what came before."""
+    ends the line, so the text that belongs to it is what came before.
+
+    Numbers only ever climb. A chapter runs 1..N in order, so anything that
+    does not advance is not a question: a logic puzzle's shared preamble
+    numbers its *rules* the same way a question is numbered, and without this
+    ".1 החשמלאי אינו יכול..." becomes a second question 1."""
     blocks, cur, num = [], [], None
+    highest = 0
     for line in lines:
+        hit = kind = None
         m = RTL_Q_MARK.search(line) if rtl else Q_MARK.match(line)
-        head = RTL_Q_HEAD.match(line) if rtl and not m else None
-        if m or head:
+        if m:
+            hit, kind = m, 'tail'
+        elif rtl:
+            head = RTL_Q_HEAD.match(line)
+            mid = None if head else RTL_Q_MID.search(line)
+            if head or mid:
+                hit, kind = (head, 'head') if head else (mid, 'mid')
+
+        if hit:
+            found = int(next(g for g in hit.groups() if g))
+            if found <= highest:
+                if num is not None:
+                    cur.append(line)
+                continue
+
+            # A marker in the middle of a line splits it: what precedes it
+            # finishes the question before, what follows begins this one.
             if num is not None:
+                if kind == 'mid' and line[: hit.start()].strip():
+                    cur.append(line[: hit.start()])
                 blocks.append((num, cur))
-            hit = m or head
-            num = int(next(g for g in hit.groups() if g))
-            cur = [line[:hit.start()] if m and rtl else line[hit.end():]]
+            num = found
+            highest = found
+            cur = [line[: hit.start()] if kind == 'tail' else line[hit.end() :]]
         elif num is not None:
             cur.append(line)
     if num is not None:

@@ -1,7 +1,12 @@
 /* Browser adapter for the account endpoints the server exposes. */
 
 import type { UnverifiedBank } from '../../domain/model/bank.ts';
-import type { AccountGateway, Identity, StoredBank } from '../../presentation/web/ports.ts';
+import type {
+  AccountGateway,
+  FinishedAttempt,
+  Identity,
+  StoredBank,
+} from '../../presentation/web/ports.ts';
 
 async function get<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: { 'x-mapam': '1' } });
@@ -28,6 +33,14 @@ export class ServerAccount implements AccountGateway {
 
   open(id: string): Promise<UnverifiedBank> {
     return get<UnverifiedBank>(`/api/banks/${encodeURIComponent(id)}`);
+  }
+
+  async record(attempt: FinishedAttempt): Promise<void> {
+    await fetch('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mapam': '1' },
+      body: JSON.stringify(attempt),
+    }).catch(() => undefined);
   }
 
   async forget(id: string): Promise<void> {

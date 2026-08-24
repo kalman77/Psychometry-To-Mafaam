@@ -8,6 +8,7 @@ import type { AnswerIndex, Bank, UnverifiedBank } from '../../domain/model/bank.
 import type { Responses, TimeSpent } from '../../domain/model/scoring.ts';
 import type { ItemStep, Sitting, Step, StimulusStep } from '../../domain/model/sitting.ts';
 import { RULES } from '../../domain/rules/rulebook.ts';
+import { score } from '../../domain/services/scoring-service.ts';
 import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
 import type { Identity, SavedProgress, StoredBank } from './ports.ts';
@@ -398,7 +399,9 @@ export class RunnerController {
 
   private showWriting(step: Extract<Step, { kind: 'writing' }>): void {
     const { screen } = this.deps;
-    screen.render(renderWriting({ ...step, essay: this.essay }));
+    screen.render(
+      renderWriting({ ...step, essay: this.essay, canSend: Boolean(this.deps.postEssay) }),
+    );
 
     const textarea = screen.byId<HTMLTextAreaElement>('essay');
     const words = screen.byId('words');
@@ -424,6 +427,9 @@ export class RunnerController {
       textarea.focus();
     }
     update();
+
+    const send = screen.byId('send-essay');
+    if (send) send.onclick = () => void this.sendEssay(send, null);
 
     const finish = once(() => {
       this.essay = textarea?.value ?? this.essay;
@@ -543,6 +549,51 @@ export class RunnerController {
     return meta.session ?? meta.title ?? 'מפעם';
   }
 
+  /** Files the finished sitting so the statistics page has it even after the
+   *  booklet itself is deleted. Best effort: a failed POST must not stand
+   *  between the learner and their results. */
+  private async recordAttempt(): Promise<void> {
+    const account = this.deps.account;
+    if (!account || !this.sitting) return;
+    const report = score(this.sitting, this.responses);
+    const answered = report.detail.filter((item) => item.given != null).length;
+    await account.record({
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      bankId: this.bankId,
+      session: this.sessionName(),
+      finishedAt: Date.now(),
+      verbal: report.uniform.verbal,
+      quantitative: report.uniform.quantitative,
+      english: report.uniform.english,
+      multi: report.general.multi,
+      answered,
+      correct: report.detail.filter((item) => item.correct).length,
+      seconds: Object.values(this.spent).reduce((a, b) => a + b, 0),
+    });
+  }
+
+  /** Hands the essay to whoever checks it, and says what came back. */
+  private async sendEssay(button: HTMLElement, note: HTMLElement | null): Promise<void> {
+    const mailer = this.deps.postEssay;
+    if (!mailer || !this.essay.trim()) return;
+    const label = button.textContent;
+    button.textContent = 'שולח…';
+    (button as HTMLButtonElement).disabled = true;
+    try {
+      const { essaysSent, teacher } = await mailer.send(`${this.sessionName()}.docx`, this.sessionName(), {
+        title: 'מטלת כתיבה',
+        subtitle: this.sitting?.meta?.title ?? '',
+        essay: this.essay,
+      });
+      button.textContent = 'נשלח';
+      if (note) note.textContent = `נשלח אל ${teacher} · ${essaysSent} מטלות עד כה`;
+    } catch (error) {
+      button.textContent = label;
+      (button as HTMLButtonElement).disabled = false;
+      if (note) note.textContent = (error as Error).message;
+    }
+  }
+
   private showResults(): void {
     const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
     countdown.stop();
@@ -554,6 +605,7 @@ export class RunnerController {
     const sitting = this.sitting;
     if (!sitting) return this.showSetup();
 
+    void this.recordAttempt();
     const attempt = scoreAttempt.execute({
       sitting,
       responses: this.responses,
@@ -567,11 +619,15 @@ export class RunnerController {
         spent: this.spent,
         essay: this.essay,
         session: this.sessionName(),
+        canSend: Boolean(this.deps.postEssay),
       }),
     );
 
     const again = screen.byId('again');
     if (again) again.onclick = () => this.showSetup();
+
+    const post = screen.byId('send-essay');
+    if (post) post.onclick = () => void this.sendEssay(post, screen.byId('send-note'));
 
     const essay = screen.byId('dl-essay');
     if (essay)

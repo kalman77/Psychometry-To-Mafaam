@@ -40,6 +40,7 @@ function renderAccount(identity: Identity): string {
   return `
   <div class="account">
     <span>${esc(identity.name)}</span>
+    <a href="/me" class="account-out">העמוד שלי</a>
     <a href="/logout" class="account-out">יציאה</a>
   </div>`;
 }

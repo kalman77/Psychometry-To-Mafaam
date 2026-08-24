@@ -60,7 +60,11 @@ export function renderWriting(step: WritingStep): string {
         <span>מילים <b id="words">0</b></span>
       </div>
     </div>
-    <div class="controls"><button class="btn" id="go">סיימתי</button><span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span></div>
+    <div class="controls">
+      <button class="btn" id="go">סיימתי</button>
+      ${when(step.canSend, `<button class="btn quiet" id="send-essay">לשלוח לבדיקה</button>`)}
+      <span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span>
+    </div>
   </div>`;
 }
 

@@ -13,4 +13,6 @@ export interface WritingStep extends StepBase {
   /** What has been written so far. Empty on a fresh sitting; refilled when a
    *  half-written essay is resumed. */
   essay: string;
+  /** Whether a checker is reachable — false in the standalone runner. */
+  canSend: boolean;
 }

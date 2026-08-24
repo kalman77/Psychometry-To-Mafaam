@@ -3,12 +3,13 @@
  *
  * One type per file under ./ports/; this barrel is the import surface. */
 
-export type { AccountGateway, Identity } from './ports/account-gateway.ts';
+export type { AccountGateway, FinishedAttempt, Identity } from './ports/account-gateway.ts';
 export type { BankFileReader } from './ports/bank-file-reader.ts';
 export type { Chrome } from './ports/chrome.ts';
 export type { Countdown } from './ports/countdown.ts';
 export type { CountdownHandlers } from './ports/countdown-handlers.ts';
 export type { EssayDocument } from './ports/essay-document.ts';
+export type { EssayMailer, EssaySent } from './ports/essay-mailer.ts';
 export type { FileSaver } from './ports/file-saver.ts';
 export type { KeyHandler } from './ports/key-handler.ts';
 export type { LoadedBank } from './ports/loaded-bank.ts';

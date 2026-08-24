@@ -8,6 +8,7 @@ import type { Chrome } from '../ports/chrome.ts';
 import type { Countdown } from '../ports/countdown.ts';
 import type { FileSaver } from '../ports/file-saver.ts';
 import type { AccountGateway } from '../ports/account-gateway.ts';
+import type { EssayMailer } from '../ports/essay-mailer.ts';
 import type { ProgressStore } from '../ports/progress-store.ts';
 import type { Screen } from '../ports/screen.ts';
 
@@ -20,6 +21,7 @@ export interface RunnerDeps {
   progress: ProgressStore;
   /** Absent in the standalone runner, which has no server behind it. */
   account?: AccountGateway | null;
+  postEssay?: EssayMailer | null;
   buildSitting: BuildSittingUseCase;
   scoreAttempt: ScoreAttemptUseCase;
   /** Bank inlined at build time, offered as "start from the example". */

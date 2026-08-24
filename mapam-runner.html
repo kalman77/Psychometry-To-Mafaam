@@ -762,7 +762,8 @@ td.n .dot.na{background:var(--line)}
         intro: bank.writingTask.intro ?? null,
         minLines: bank.writingTask.minLines ?? rules.writing.minLines,
         image: bank.writingTask.image ?? null,
-        essay: ""
+        essay: "",
+        canSend: false
       });
       push({ kind: "break", seconds: rules.breaks.majorSeconds, label: "\u05D4\u05E4\u05E1\u05E7\u05D4", after: "writing" });
     }
@@ -1261,6 +1262,13 @@ td.n .dot.na{background:var(--line)}
     open(id) {
       return get(`/api/banks/${encodeURIComponent(id)}`);
     }
+    async record(attempt) {
+      await fetch("/api/attempts", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-mapam": "1" },
+        body: JSON.stringify(attempt)
+      }).catch(() => void 0);
+    }
     async forget(id) {
       await fetch(`/api/banks/${encodeURIComponent(id)}`, {
         method: "DELETE",
@@ -1514,6 +1522,79 @@ td.n .dot.na{background:var(--line)}
     }
   };
 
+  // src/infrastructure/web/remote-progress-store.ts
+  var RemoteProgressStore = class {
+    constructor() {
+      __publicField(this, "local", new LocalProgressStore());
+      __publicField(this, "inFlight", null);
+    }
+    load() {
+      return this.local.load();
+    }
+    save(progress) {
+      this.local.save(progress);
+      if (!progress.bankId) return;
+      const body = JSON.stringify(progress);
+      if (body === this.inFlight) return;
+      this.inFlight = body;
+      void fetch(`/api/progress/${encodeURIComponent(progress.bankId)}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json", "x-mapam": "1" },
+        body
+      }).catch(() => void 0);
+    }
+    clear() {
+      const saved = this.local.load();
+      this.local.clear();
+      if (saved?.bankId)
+        void fetch(`/api/progress/${encodeURIComponent(saved.bankId)}`, {
+          method: "DELETE",
+          headers: { "x-mapam": "1" }
+        }).catch(() => void 0);
+    }
+    /** Pulls a run left on another browser into this one. */
+    async adopt(bankId) {
+      try {
+        const response = await fetch(`/api/progress/${encodeURIComponent(bankId)}`, {
+          headers: { "x-mapam": "1" }
+        });
+        if (!response.ok) return null;
+        const remote = await response.json();
+        const local = this.local.load();
+        if (local && local.bankId === bankId && local.savedAt >= remote.savedAt) return local;
+        this.local.save(remote);
+        return remote;
+      } catch {
+        return null;
+      }
+    }
+  };
+
+  // src/infrastructure/web/server-essay-mailer.ts
+  async function toBase64(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 32768)
+      binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    return btoa(binary);
+  }
+  var ServerEssayMailer = class {
+    async send(filename, session, document2) {
+      const response = await fetch("/api/essay/send", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-mapam": "1" },
+        body: JSON.stringify({
+          session,
+          filename,
+          docx: await toBase64(essayDocx(document2))
+        })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload) throw new Error(payload?.error ?? "\u05D4\u05E9\u05DC\u05D9\u05D7\u05D4 \u05E0\u05DB\u05E9\u05DC\u05D4.");
+      return payload;
+    }
+  };
+
   // src/presentation/web/html.ts
   var ENTITIES = {
     "&": "&amp;",
@@ -1597,6 +1678,10 @@ td.n .dot.na{background:var(--line)}
       <button class="btn" id="again">\u05DC\u05D4\u05E8\u05D9\u05E5 \u05E9\u05D5\u05D1</button>
       <button class="btn quiet" id="dl">\u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05EA\u05E9\u05D5\u05D1\u05D5\u05EA</button>
       ${when(vm.essay.trim(), `<button class="btn quiet" id="dl-essay">\u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05D0\u05EA \u05D4\u05D7\u05D9\u05D1\u05D5\u05E8 (Word)</button>`)}
+      ${when(vm.essay.trim() && vm.canSend, `<button class="btn quiet" id="send-essay">\u05DC\u05E9\u05DC\u05D5\u05D7 \u05DC\u05D1\u05D3\u05D9\u05E7\u05D4</button>`)}
+    </div>
+    <p class="tag" id="send-note" style="text-align:center;margin:14px 0 0"></p>
+    <div style="display:none">
     </div>
   </div></div>`;
   }
@@ -1632,6 +1717,7 @@ td.n .dot.na{background:var(--line)}
     return `
   <div class="account">
     <span>${esc(identity.name)}</span>
+    <a href="/me" class="account-out">\u05D4\u05E2\u05DE\u05D5\u05D3 \u05E9\u05DC\u05D9</a>
     <a href="/logout" class="account-out">\u05D9\u05E6\u05D9\u05D0\u05D4</a>
   </div>`;
   }
@@ -1772,7 +1858,11 @@ td.n .dot.na{background:var(--line)}
         <span>\u05DE\u05D9\u05DC\u05D9\u05DD <b id="words">0</b></span>
       </div>
     </div>
-    <div class="controls"><button class="btn" id="go">\u05E1\u05D9\u05D9\u05DE\u05EA\u05D9</button><span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span></div>
+    <div class="controls">
+      <button class="btn" id="go">\u05E1\u05D9\u05D9\u05DE\u05EA\u05D9</button>
+      ${when(step.canSend, `<button class="btn quiet" id="send-essay">\u05DC\u05E9\u05DC\u05D5\u05D7 \u05DC\u05D1\u05D3\u05D9\u05E7\u05D4</button>`)}
+      <span class="hint"><kbd>Ctrl</kbd> <kbd>Enter</kbd></span>
+    </div>
   </div>`;
   }
   function isScan(step) {
@@ -2169,7 +2259,9 @@ td.n .dot.na{background:var(--line)}
     }
     showWriting(step) {
       const { screen } = this.deps;
-      screen.render(renderWriting({ ...step, essay: this.essay }));
+      screen.render(
+        renderWriting({ ...step, essay: this.essay, canSend: Boolean(this.deps.postEssay) })
+      );
       const textarea = screen.byId("essay");
       const words = screen.byId("words");
       const lines = screen.byId("lines");
@@ -2187,6 +2279,8 @@ td.n .dot.na{background:var(--line)}
         textarea.focus();
       }
       update();
+      const send = screen.byId("send-essay");
+      if (send) send.onclick = () => void this.sendEssay(send, null);
       const finish = once(() => {
         this.essay = textarea?.value ?? this.essay;
         this.next();
@@ -2282,6 +2376,49 @@ td.n .dot.na{background:var(--line)}
       const meta = this.sitting?.meta ?? {};
       return meta.session ?? meta.title ?? "\u05DE\u05E4\u05E2\u05DD";
     }
+    /** Files the finished sitting so the statistics page has it even after the
+     *  booklet itself is deleted. Best effort: a failed POST must not stand
+     *  between the learner and their results. */
+    async recordAttempt() {
+      const account = this.deps.account;
+      if (!account || !this.sitting) return;
+      const report = score(this.sitting, this.responses);
+      const answered = report.detail.filter((item) => item.given != null).length;
+      await account.record({
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        bankId: this.bankId,
+        session: this.sessionName(),
+        finishedAt: Date.now(),
+        verbal: report.uniform.verbal,
+        quantitative: report.uniform.quantitative,
+        english: report.uniform.english,
+        multi: report.general.multi,
+        answered,
+        correct: report.detail.filter((item) => item.correct).length,
+        seconds: Object.values(this.spent).reduce((a, b) => a + b, 0)
+      });
+    }
+    /** Hands the essay to whoever checks it, and says what came back. */
+    async sendEssay(button, note) {
+      const mailer = this.deps.postEssay;
+      if (!mailer || !this.essay.trim()) return;
+      const label = button.textContent;
+      button.textContent = "\u05E9\u05D5\u05DC\u05D7\u2026";
+      button.disabled = true;
+      try {
+        const { essaysSent, teacher } = await mailer.send(`${this.sessionName()}.docx`, this.sessionName(), {
+          title: "\u05DE\u05D8\u05DC\u05EA \u05DB\u05EA\u05D9\u05D1\u05D4",
+          subtitle: this.sitting?.meta?.title ?? "",
+          essay: this.essay
+        });
+        button.textContent = "\u05E0\u05E9\u05DC\u05D7";
+        if (note) note.textContent = `\u05E0\u05E9\u05DC\u05D7 \u05D0\u05DC ${teacher} \xB7 ${essaysSent} \u05DE\u05D8\u05DC\u05D5\u05EA \u05E2\u05D3 \u05DB\u05D4`;
+      } catch (error) {
+        button.textContent = label;
+        button.disabled = false;
+        if (note) note.textContent = error.message;
+      }
+    }
     showResults() {
       const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
       countdown.stop();
@@ -2291,6 +2428,7 @@ td.n .dot.na{background:var(--line)}
       screen.onKey(null);
       const sitting = this.sitting;
       if (!sitting) return this.showSetup();
+      void this.recordAttempt();
       const attempt = scoreAttempt.execute({
         sitting,
         responses: this.responses,
@@ -2302,11 +2440,14 @@ td.n .dot.na{background:var(--line)}
           report: attempt.score,
           spent: this.spent,
           essay: this.essay,
-          session: this.sessionName()
+          session: this.sessionName(),
+          canSend: Boolean(this.deps.postEssay)
         })
       );
       const again = screen.byId("again");
       if (again) again.onclick = () => this.showSetup();
+      const post = screen.byId("send-essay");
+      if (post) post.onclick = () => void this.sendEssay(post, screen.byId("send-note"));
       const essay = screen.byId("dl-essay");
       if (essay)
         essay.onclick = () => saver.saveEssay(`${this.sessionName()}.docx`, {
@@ -2349,7 +2490,7 @@ td.n .dot.na{background:var(--line)}
     return element;
   }
   function bootstrap() {
-    const served = location.protocol !== "file:";
+    const served = location.protocol !== "file:" && typeof fetch === "function";
     const controller = new RunnerController({
       screen: new DomScreen(required("#app")),
       chrome: new DomChrome(
@@ -2363,8 +2504,9 @@ td.n .dot.na{background:var(--line)}
       // offered when one served this page.
       bankFiles: served ? new ServerBankFileReader() : new BrowserBankFileReader(),
       account: served ? new ServerAccount() : null,
+      postEssay: served ? new ServerEssayMailer() : null,
       saver: new JsonFileSaver(),
-      progress: new LocalProgressStore(),
+      progress: served ? new RemoteProgressStore() : new LocalProgressStore(),
       buildSitting: new BuildSittingUseCase(seededRandomFactory),
       scoreAttempt: new ScoreAttemptUseCase(),
       exampleBank: window.EXAMPLE_BANK ?? null

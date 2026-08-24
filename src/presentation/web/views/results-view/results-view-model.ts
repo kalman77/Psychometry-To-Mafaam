@@ -9,4 +9,6 @@ export interface ResultsViewModel {
   essay: string;
   /** Names the .docx download; the booklet's sitting when it has one. */
   session: string;
+  /** Whether a checker is reachable — false in the standalone runner. */
+  canSend: boolean;
 }

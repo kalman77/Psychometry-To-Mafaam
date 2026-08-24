@@ -337,6 +337,9 @@ export class RunnerController {
   }
 
   /** Runs the clock for a step; `visibleDial` is false during breaks. */
+  /** Seconds between heartbeat saves while a step runs. */
+  private static readonly SAVE_EVERY = 3;
+
   private runClock(seconds: number, onExpire: () => void, visibleDial = true): void {
     // A resumed step keeps the clock it was interrupted on rather than being
     // handed a fresh one.
@@ -345,7 +348,14 @@ export class RunnerController {
       this.resuming = null;
     }
     this.deps.countdown.start(seconds, {
-      onTick: (remaining, total) => this.deps.chrome.showTime(remaining, total, visibleDial),
+      onTick: (remaining, total) => {
+        this.deps.chrome.showTime(remaining, total, visibleDial);
+        // Without this, a question nobody answered is only saved on the way in,
+        // so the minute spent thinking about it is handed back on resume. The
+        // clock is the one piece of state that changes without the learner
+        // touching anything, so it needs a heartbeat rather than an event.
+        if (Math.round(remaining) % RunnerController.SAVE_EVERY === 0) this.persist();
+      },
       onExpire,
     });
     this.deps.chrome.showTime(seconds, seconds, visibleDial);
@@ -395,22 +405,10 @@ export class RunnerController {
     const lines = screen.byId('lines');
     const meter = screen.byId('lw');
 
-    // Half an hour of typing used to be held in memory alone: persist() only
-    // ran on advancing or answering, so closing the tab lost the whole essay.
-    // Written on a timer rather than per keystroke — the blob is tiny, but
-    // there is no reason to serialise it on every letter.
-    let pending: ReturnType<typeof setTimeout> | null = null;
-    const saveSoon = (): void => {
-      if (pending !== null) clearTimeout(pending);
-      pending = setTimeout(() => {
-        pending = null;
-        this.persist();
-      }, 1000);
-    };
-
     const update = () => {
+      // The clock's heartbeat persists this a few seconds later; typing does
+      // not need its own timer on top of it.
       this.essay = textarea?.value ?? '';
-      saveSoon();
       const wordCount = (this.essay.trim().match(/\S+/g) ?? []).length;
       // A line on paper is ~62 characters; long paragraphs wrap into several.
       const lineCount = this.essay
@@ -428,7 +426,6 @@ export class RunnerController {
     update();
 
     const finish = once(() => {
-      if (pending !== null) clearTimeout(pending);
       this.essay = textarea?.value ?? this.essay;
       this.next();
     });

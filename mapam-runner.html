@@ -1865,7 +1865,7 @@ td.n .dot.na{background:var(--line)}
       fn();
     };
   }
-  var RunnerController = class {
+  var _RunnerController = class _RunnerController {
     constructor(deps) {
       __publicField(this, "bank", null);
       __publicField(this, "sitting", null);
@@ -2123,14 +2123,16 @@ td.n .dot.na{background:var(--line)}
           return this.next();
       }
     }
-    /** Runs the clock for a step; `visibleDial` is false during breaks. */
     runClock(seconds, onExpire, visibleDial = true) {
       if (this.resuming !== null) {
         seconds = Math.min(seconds, this.resuming);
         this.resuming = null;
       }
       this.deps.countdown.start(seconds, {
-        onTick: (remaining, total) => this.deps.chrome.showTime(remaining, total, visibleDial),
+        onTick: (remaining, total) => {
+          this.deps.chrome.showTime(remaining, total, visibleDial);
+          if (Math.round(remaining) % _RunnerController.SAVE_EVERY === 0) this.persist();
+        },
         onExpire
       });
       this.deps.chrome.showTime(seconds, seconds, visibleDial);
@@ -2172,17 +2174,8 @@ td.n .dot.na{background:var(--line)}
       const words = screen.byId("words");
       const lines = screen.byId("lines");
       const meter = screen.byId("lw");
-      let pending = null;
-      const saveSoon = () => {
-        if (pending !== null) clearTimeout(pending);
-        pending = setTimeout(() => {
-          pending = null;
-          this.persist();
-        }, 1e3);
-      };
       const update = () => {
         this.essay = textarea?.value ?? "";
-        saveSoon();
         const wordCount = (this.essay.trim().match(/\S+/g) ?? []).length;
         const lineCount = this.essay.split("\n").reduce((n, line) => n + Math.max(1, Math.ceil(line.length / 62)), 0);
         if (words) words.textContent = String(wordCount);
@@ -2195,7 +2188,6 @@ td.n .dot.na{background:var(--line)}
       }
       update();
       const finish = once(() => {
-        if (pending !== null) clearTimeout(pending);
         this.essay = textarea?.value ?? this.essay;
         this.next();
       });
@@ -2330,6 +2322,10 @@ td.n .dot.na{background:var(--line)}
       return this.sitting?.rules ?? RULES;
     }
   };
+  /** Runs the clock for a step; `visibleDial` is false during breaks. */
+  /** Seconds between heartbeat saves while a step runs. */
+  __publicField(_RunnerController, "SAVE_EVERY", 3);
+  var RunnerController = _RunnerController;
   function fingerprint(bank) {
     const parsed = bank;
     const sections = (parsed.sections ?? []).map((section) => `${section.id}:${section.items?.length ?? 0}`).join(",");

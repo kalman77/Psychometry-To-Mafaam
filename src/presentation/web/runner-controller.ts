@@ -8,7 +8,6 @@ import type { AnswerIndex, Bank, UnverifiedBank } from '../../domain/model/bank.
 import type { Responses, TimeSpent } from '../../domain/model/scoring.ts';
 import type { ItemStep, Sitting, Step, StimulusStep } from '../../domain/model/sitting.ts';
 import { RULES } from '../../domain/rules/rulebook.ts';
-import { score } from '../../domain/services/scoring-service.ts';
 import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
 import type { Identity, SavedProgress, StoredBank } from './ports.ts';
@@ -555,21 +554,17 @@ export class RunnerController {
    *  between the learner and their results. */
   private async recordAttempt(): Promise<void> {
     const account = this.deps.account;
-    if (!account || !this.sitting) return;
-    const report = score(this.sitting, this.responses);
-    const answered = report.detail.filter((item) => item.given != null).length;
+    // Only a booklet the server holds can be scored there, so a sitting of a
+    // locally dropped file is simply not filed.
+    if (!account || !this.sitting || !this.bankId) return;
     await account.record({
-      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       bankId: this.bankId,
-      session: this.sessionName(),
-      finishedAt: Date.now(),
-      verbal: report.uniform.verbal,
-      quantitative: report.uniform.quantitative,
-      english: report.uniform.english,
-      multi: report.general.multi,
-      answered,
-      correct: report.detail.filter((item) => item.correct).length,
-      seconds: Object.values(this.spent).reduce((a, b) => a + b, 0),
+      blueprint: this.config.blueprint,
+      seed: this.config.seed,
+      writingMinutes: this.config.writingMinutes,
+      includeWriting: this.config.includeWriting,
+      responses: this.responses,
+      spent: this.spent,
     });
   }
 

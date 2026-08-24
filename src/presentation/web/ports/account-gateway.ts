@@ -11,18 +11,20 @@ export interface Identity {
   email: string;
 }
 
+/* What a finished sitting reports: which booklet, how it was set up, and what
+ * was answered — deliberately not what any of it scored.
+ *
+ * The server rebuilds the sitting from the same bank, blueprint and seed and
+ * marks these responses itself. Sending scores would mean the dashboard a
+ * teacher reads was assembled from numbers the browser chose. */
 export interface FinishedAttempt {
-  id: string;
-  bankId: string | null;
-  session: string;
-  finishedAt: number;
-  verbal: number;
-  quantitative: number;
-  english: number;
-  multi: number;
-  answered: number;
-  correct: number;
-  seconds: number;
+  bankId: string;
+  blueprint: string | null;
+  seed: string | null;
+  writingMinutes: number;
+  includeWriting: boolean;
+  responses: Record<string, number | null | undefined>;
+  spent: Record<string, number>;
 }
 
 export interface AccountGateway {

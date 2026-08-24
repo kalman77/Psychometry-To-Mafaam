@@ -10,6 +10,7 @@ export type { Countdown } from './ports/countdown.ts';
 export type { CountdownHandlers } from './ports/countdown-handlers.ts';
 export type { FileSaver } from './ports/file-saver.ts';
 export type { KeyHandler } from './ports/key-handler.ts';
+export type { LoadedBank } from './ports/loaded-bank.ts';
 export type { ProgressStore } from './ports/progress-store.ts';
 export type { SavedProgress } from './ports/saved-progress.ts';
 export type { Screen } from './ports/screen.ts';

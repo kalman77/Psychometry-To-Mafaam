@@ -118,6 +118,15 @@ PASSAGE_LINE_NO_RTL = re.compile(r'\s{3,}\(\s*\)?\s*\d{0,3}\s*$')
 # "השאלות" closes a Hebrew passage; the questions start on the next line.
 PASSAGE_END = re.compile(r'^\s*השאלות\s*$')
 
+# The cover carries the booklet's own name — "בחינה פסיכומטרית / להתנסות /
+# עברית / מועד אביב 2025" — which is what anyone would call this test, and far
+# more use than a generic placeholder once there are several in a library.
+COVER_LINES = 6
+# The cover stops at the copyright, not at `is_noise`: that list strips the
+# "מועד אביב 2025" running header, which here is the very thing that tells one
+# booklet from another.
+COVER_STOP = re.compile(r'כל\s+הזכויות\s+שמורות|אין\s+להעתיק|^\s*\d+\s*$')
+
 ANSWER_KEY_PAGE = re.compile(r'מפתח\s+תשובות\s+נכונות')
 BLANK_PAGE = re.compile(r'עמוד\s+ריק')
 # The quantitative chapters open with a formula sheet, itself a numbered list
@@ -206,14 +215,33 @@ def split_pages(text):
     return pages
 
 
+def cover_title(lines):
+    """The booklet's name, off its first page.
+
+    Everything above the copyright notice, so the run ends where the booklet's
+    own front matter does rather than at a guessed line count."""
+    title = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if COVER_STOP.search(line) or len(title) >= COVER_LINES:
+            break
+        title.append(line)
+    return ' '.join(title) or None
+
+
 def parse(text):
     pages = split_pages(text)
-    chapters, answer_key, writing = [], {}, None
+    chapters, answer_key, writing, title = [], {}, None, None
     current = None
 
     for page_no, raw_page in enumerate(pages, 1):
         lines = [clean(l) for l in raw_page.split('\n')]
         joined = '\n'.join(lines)
+
+        if page_no == 1:
+            title = cover_title(lines)
 
         if ANSWER_KEY_PAGE.search(joined):
             answer_key.update(parse_answer_key(lines))
@@ -258,7 +286,7 @@ def parse(text):
             out.append({'domain': ch['domain'], 'chapter': ch['chapter'],
                         'pages': ch['pages'], 'runs': ch['runs'],
                         'items': items, 'stimuli': stimuli, 'notes': notes})
-    return out, answer_key, writing
+    return out, answer_key, writing, title
 
 
 def parse_writing_task(lines):
@@ -1035,7 +1063,8 @@ def main():
     ap.add_argument('pdf', nargs='?', help='booklet PDF')
     ap.add_argument('--from-text', help='skip extraction, parse this text dump')
     ap.add_argument('-o', '--out', help='write bank JSON here')
-    ap.add_argument('--title', default='בחינה מחולצת')
+    ap.add_argument('--title', default=None,
+                    help='overrides the name read off the booklet cover')
     ap.add_argument('--images', action='store_true',
                     help='crop diagrams out of the page scan and embed them')
     ap.add_argument('--question-images', action='store_true',
@@ -1059,7 +1088,7 @@ def main():
         print('wrote', a.dump_text)
         return
 
-    chapters, key, writing = parse(text)
+    chapters, key, writing, found = parse(text)
     if not chapters:
         sys.exit('No chapters recognised. Check the running headers with --dump-text.')
 
@@ -1071,7 +1100,8 @@ def main():
         if a.question_images and writing:
             add_writing_image(writing, a.pdf, a.image_dpi)
 
-    bank, missing = to_bank(chapters, key, a.title, writing)
+    # An explicit --title wins; otherwise the booklet names itself.
+    bank, missing = to_bank(chapters, key, a.title or found or 'בחינה מחולצת', writing)
     if figures:
         items_done, items_wide, stimuli_done, figure_notes = figures
         if a.question_images:

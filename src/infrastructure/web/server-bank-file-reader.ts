@@ -4,7 +4,7 @@
  * working untouched; only a PDF needs the extractor on the other end. */
 
 import type { UnverifiedBank } from '../../domain/model/bank.ts';
-import type { BankFileReader } from '../../presentation/web/ports.ts';
+import type { BankFileReader, LoadedBank } from '../../presentation/web/ports.ts';
 import { BrowserBankFileReader } from './file-bank-reader.ts';
 
 const isPdf = (file: File): boolean =>
@@ -18,7 +18,7 @@ export class ServerBankFileReader implements BankFileReader {
     this.endpoint = endpoint;
   }
 
-  async read(file: File): Promise<UnverifiedBank> {
+  async read(file: File): Promise<LoadedBank> {
     if (!isPdf(file)) return this.local.read(file);
 
     const response = await fetch(this.endpoint, {
@@ -28,11 +28,13 @@ export class ServerBankFileReader implements BankFileReader {
     });
 
     const payload = (await response.json().catch(() => null)) as
-      | { bank?: UnverifiedBank; error?: string }
+      | { bank?: UnverifiedBank; record?: { id: string }; error?: string }
       | null;
 
     if (!response.ok || !payload?.bank)
       throw new Error(payload?.error ?? `החילוץ נכשל (${response.status}).`);
-    return payload.bank;
+    return payload.record
+      ? { bank: payload.bank, storedId: payload.record.id }
+      : { bank: payload.bank };
   }
 }

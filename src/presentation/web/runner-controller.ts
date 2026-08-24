@@ -46,6 +46,8 @@ export class RunnerController {
   /** Seconds left on a step being resumed, consumed by the next runClock. */
   private resuming: number | null = null;
   private identity: Identity | null = null;
+  /** Set when the loaded bank came from the server, so a save can point back. */
+  private bankId: string | null = null;
   private library: StoredBank[] = [];
   private readonly deps: RunnerDeps;
 
@@ -110,7 +112,9 @@ export class RunnerController {
     if (!account || !id) return;
     this.showSetup('טוען את החוברת…');
     try {
-      this.adoptBank(await account.open(id));
+      const bank = await account.open(id);
+      this.bankId = id;
+      this.adoptBank(bank);
     } catch {
       this.showSetup('לא ניתן לטעון את החוברת.');
     }
@@ -181,7 +185,7 @@ export class RunnerController {
 
     const saved = this.savedRun();
     const resume = screen.byId('resume');
-    if (resume && saved) resume.onclick = () => this.resume(saved);
+    if (resume && saved) resume.onclick = () => void this.resumeStored(saved);
     const discard = screen.byId('discard');
     if (discard)
       discard.onclick = () => {
@@ -206,7 +210,11 @@ export class RunnerController {
   private async loadFile(file: File | undefined): Promise<void> {
     if (!file) return;
     try {
-      this.adoptBank(await this.deps.bankFiles.read(file));
+      const loaded = await this.deps.bankFiles.read(file);
+      this.bankId = loaded.storedId ?? null;
+      this.adoptBank(loaded.bank);
+      // The upload just added a booklet to the library; show it there too.
+      void this.refreshAccount();
     } catch (error) {
       this.showSetup(`הקובץ אינו JSON תקין: ${(error as Error).message}`);
     }
@@ -247,8 +255,30 @@ export class RunnerController {
   /** The saved run, but only if it belongs to the bank now loaded. */
   private savedRun(): SavedProgress | null {
     const saved = this.deps.progress.load();
-    if (!saved || !this.bank) return null;
+    if (!saved) return null;
+    // Straight after a reload there is no bank in memory yet. If the run names
+    // a booklet this account still has, offer it anyway and fetch on the way in.
+    if (!this.bank)
+      return saved.bankId && this.library.some((bank) => bank.id === saved.bankId)
+        ? saved
+        : null;
     return saved.fingerprint === fingerprint(this.bank) ? saved : null;
+  }
+
+  /** Resume needs the bank; after a reload it has to be fetched first. */
+  private async resumeStored(saved: SavedProgress): Promise<void> {
+    const account = this.deps.account;
+    if (this.bank) return this.resume(saved);
+    if (!account || !saved.bankId) return;
+    this.showSetup('טוען את החוברת…');
+    try {
+      const bank = await account.open(saved.bankId);
+      this.bankId = saved.bankId;
+      this.bank = bank;
+      this.resume(saved);
+    } catch {
+      this.showSetup('לא ניתן לטעון את החוברת.');
+    }
   }
 
   /** Bank plus blueprint plus seed rebuild the steps, so those are all that a
@@ -259,6 +289,7 @@ export class RunnerController {
     if (!step || step.kind === 'end') return;
     this.deps.progress.save({
       fingerprint: fingerprint(this.bank),
+      ...(this.bankId ? { bankId: this.bankId } : {}),
       savedAt: Date.now(),
       config: this.config,
       cursor: this.cursor,

@@ -1226,7 +1226,7 @@ td.n .dot.na{background:var(--line)}
         reader.onerror = () => reject(new Error("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05E7\u05E8\u05D5\u05D0 \u05D0\u05EA \u05D4\u05E7\u05D5\u05D1\u05E5."));
         reader.onload = () => {
           try {
-            resolve(JSON.parse(String(reader.result)));
+            resolve({ bank: JSON.parse(String(reader.result)) });
           } catch (error) {
             reject(error);
           }
@@ -1286,7 +1286,7 @@ td.n .dot.na{background:var(--line)}
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.bank)
         throw new Error(payload?.error ?? `\u05D4\u05D7\u05D9\u05DC\u05D5\u05E5 \u05E0\u05DB\u05E9\u05DC (${response.status}).`);
-      return payload.bank;
+      return payload.record ? { bank: payload.bank, storedId: payload.record.id } : { bank: payload.bank };
     }
   };
 
@@ -1725,6 +1725,8 @@ td.n .dot.na{background:var(--line)}
       /** Seconds left on a step being resumed, consumed by the next runClock. */
       __publicField(this, "resuming", null);
       __publicField(this, "identity", null);
+      /** Set when the loaded bank came from the server, so a save can point back. */
+      __publicField(this, "bankId", null);
       __publicField(this, "library", []);
       __publicField(this, "deps");
       this.deps = deps;
@@ -1776,7 +1778,9 @@ td.n .dot.na{background:var(--line)}
       if (!account || !id) return;
       this.showSetup("\u05D8\u05D5\u05E2\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA\u2026");
       try {
-        this.adoptBank(await account.open(id));
+        const bank = await account.open(id);
+        this.bankId = id;
+        this.adoptBank(bank);
       } catch {
         this.showSetup("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA.");
       }
@@ -1839,7 +1843,7 @@ td.n .dot.na{background:var(--line)}
       if (skip) skip.onchange = () => this.reconfigure({ includeWriting: !skip.checked });
       const saved = this.savedRun();
       const resume = screen.byId("resume");
-      if (resume && saved) resume.onclick = () => this.resume(saved);
+      if (resume && saved) resume.onclick = () => void this.resumeStored(saved);
       const discard = screen.byId("discard");
       if (discard)
         discard.onclick = () => {
@@ -1860,7 +1864,10 @@ td.n .dot.na{background:var(--line)}
     async loadFile(file) {
       if (!file) return;
       try {
-        this.adoptBank(await this.deps.bankFiles.read(file));
+        const loaded = await this.deps.bankFiles.read(file);
+        this.bankId = loaded.storedId ?? null;
+        this.adoptBank(loaded.bank);
+        void this.refreshAccount();
       } catch (error) {
         this.showSetup(`\u05D4\u05E7\u05D5\u05D1\u05E5 \u05D0\u05D9\u05E0\u05D5 JSON \u05EA\u05E7\u05D9\u05DF: ${error.message}`);
       }
@@ -1896,8 +1903,25 @@ td.n .dot.na{background:var(--line)}
     /** The saved run, but only if it belongs to the bank now loaded. */
     savedRun() {
       const saved = this.deps.progress.load();
-      if (!saved || !this.bank) return null;
+      if (!saved) return null;
+      if (!this.bank)
+        return saved.bankId && this.library.some((bank) => bank.id === saved.bankId) ? saved : null;
       return saved.fingerprint === fingerprint(this.bank) ? saved : null;
+    }
+    /** Resume needs the bank; after a reload it has to be fetched first. */
+    async resumeStored(saved) {
+      const account = this.deps.account;
+      if (this.bank) return this.resume(saved);
+      if (!account || !saved.bankId) return;
+      this.showSetup("\u05D8\u05D5\u05E2\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA\u2026");
+      try {
+        const bank = await account.open(saved.bankId);
+        this.bankId = saved.bankId;
+        this.bank = bank;
+        this.resume(saved);
+      } catch {
+        this.showSetup("\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D8\u05E2\u05D5\u05DF \u05D0\u05EA \u05D4\u05D7\u05D5\u05D1\u05E8\u05EA.");
+      }
     }
     /** Bank plus blueprint plus seed rebuild the steps, so those are all that a
      *  save needs alongside the answers. */
@@ -1907,6 +1931,7 @@ td.n .dot.na{background:var(--line)}
       if (!step || step.kind === "end") return;
       this.deps.progress.save({
         fingerprint: fingerprint(this.bank),
+        ...this.bankId ? { bankId: this.bankId } : {},
         savedAt: Date.now(),
         config: this.config,
         cursor: this.cursor,

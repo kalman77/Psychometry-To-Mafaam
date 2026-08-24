@@ -1,7 +1,7 @@
 /* Turning a dropped file into something the validator can look at. */
 
-import type { UnverifiedBank } from '../../../domain/model/bank/unverified-bank.ts';
+import type { LoadedBank } from './loaded-bank.ts';
 
 export interface BankFileReader {
-  read(file: File): Promise<UnverifiedBank>;
+  read(file: File): Promise<LoadedBank>;
 }

@@ -12,6 +12,10 @@ import type { SetupConfig } from '../views/setup-view/setup-config.ts';
 export interface SavedProgress {
   /** Identifies the bank this run belongs to; a save is refused onto another. */
   fingerprint: string;
+  /** The server-side booklet, when there was one. Without it a reload leaves
+   *  nothing to rebuild the sitting from, and the run looks lost when it is
+   *  only a fetch away. */
+  bankId?: string;
   /** Milliseconds since the epoch, for "saved 4 minutes ago". */
   savedAt: number;
   /** Replayed through the builder to get the same steps back. */

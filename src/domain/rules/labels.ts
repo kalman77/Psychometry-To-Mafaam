@@ -24,6 +24,33 @@ export const TYPE_LABELS: Record<ItemType, string> = {
 /** Chapter ordinals, as printed on a NITE booklet. */
 export const CHAPTER_ORDINALS = ['ראשון', 'שני', 'שלישי', 'רביעי'];
 
+/* The versions a learner can pick between.
+ *
+ * A seed is any string as far as the builder is concerned — these are the ones
+ * offered by name, so choosing a version is picking from a list rather than
+ * inventing a value and wondering what it does. Each draws a different paper
+ * from the same booklet: different questions, and a different number of them.
+ *
+ * The values are what reach the builder, so they are fixed for good — changing
+ * one would quietly turn every saved and filed sitting of that version into a
+ * different paper. */
+export const VERSIONS: readonly { seed: string; label: string }[] = [
+  { seed: 'a', label: 'גרסה א׳' },
+  { seed: 'b', label: 'גרסה ב׳' },
+  { seed: 'c', label: 'גרסה ג׳' },
+  { seed: 'd', label: 'גרסה ד׳' },
+  { seed: 'e', label: 'גרסה ה׳' },
+  { seed: 'f', label: 'גרסה ו׳' },
+  { seed: 'g', label: 'גרסה ז׳' },
+  { seed: 'h', label: 'גרסה ח׳' },
+];
+
+/** What to call a seed that is not one of the offered versions — one typed in
+ *  before this was a list, or set from the command line. */
+export function versionLabel(seed: string): string {
+  return VERSIONS.find((version) => version.seed === seed)?.label ?? `גרסה ${seed}`;
+}
+
 export function domainLabel(domain: string): string {
   return DOMAIN_LABELS[domain as SittingDomain] ?? domain;
 }

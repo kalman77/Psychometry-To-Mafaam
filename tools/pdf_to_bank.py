@@ -685,6 +685,15 @@ BBOX_OPT = re.compile(r'^[)(]\d[)(]$')
 # A sub-header ends the run above it. The box dump reverses Hebrew, so
 # "שאלות" arrives as "תולאש".
 BBOX_SUBHEAD = re.compile(r'תולאש|Questions')
+# A sub-header names the run it opens: `אנלוגיות (שאלות 1-6)`, `Questions 7-17`.
+# The range is what tells it from a question that happens to use the word — and
+# they do: "הוצגו לנחקר שאלות" is a stem, not a heading, and reading it as one
+# ends the question's band on its first line.
+BBOX_RANGE = re.compile(r'\d+\s*[-–]\s*\d+')
+# A heading is where a band's reach upward stops. The bbox layer prints Hebrew
+# in visual order and splits the formulae word unevenly between booklets, so
+# both spellings are matched on their common prefix.
+BBOX_FORMULAE = re.compile(r'תואחסו|נוסחאו')
 # A stem that says "in the drawing" has a figure even if the columns ran together.
 FIGURE_WORDS = re.compile(r'בסרטוט|בתרשים|בגרף|שלפניכם')
 
@@ -695,6 +704,19 @@ PROSE_CHARS = 40        # a row this long is a sentence, not a chart label
 MIN_FIGURE_HEIGHT = 120.0   # anything shorter is not the chart we came for
 MAX_FIGURE_WIDTH = 0.5  # of the page: wider than this and the "gutter" was noise
 MIN_INK = 600           # dark pixels at 150 dpi below which the crop is blank
+# Pixels across that a question picture aims for. A trimmed crop is narrower on
+# the page but is shown at the same size on screen, so it is rendered at a
+# higher resolution to match — the picture stays about this wide either way,
+# and so does the file. Capped so a very narrow crop cannot ask for a huge one.
+TARGET_PX = 1100
+MAX_DPI_BOOST = 3.0
+# How far a band may reach above its own question number. A stacked fraction
+# stands taller than the digit beside it, so "26/5 over 1.3" loses its 26 if the
+# band starts at the marker. Capped so the reach cannot swallow a sub-header.
+MAX_LIFT = 30.0
+# ...and the reach only crosses gaps this small. A numerator sits against the
+# expression it belongs to; a heading is a paragraph away.
+LIFT_GAP = 2.5
 
 
 def read_boxes(path):
@@ -713,7 +735,71 @@ def read_boxes(path):
     return pages
 
 
-def question_bands(page):
+def heading_rows(words, formulae=False):
+    """Tops and bottoms of the rows that open a run of questions.
+
+    Judged a row at a time rather than a word at a time: `שאלות` on its own is
+    an ordinary word that turns up inside questions, and it is the range beside
+    it that makes a heading. With `formulae`, the formula sheet's own heading
+    counts too — it carries no range."""
+    out = []
+    for row in text_lines(words):
+        line = ' '.join(w[4] for w in row)
+        heading = BBOX_SUBHEAD.search(line) and BBOX_RANGE.search(line)
+        if heading or (formulae and BBOX_FORMULAE.search(line)):
+            out.append((min(w[1] for w in row), max(w[3] for w in row)))
+    return sorted(out)
+
+
+RULE_DPI = 72           # enough to see a printed line, cheap enough per page
+RULE_COVER = 0.55       # share of the width a row must be inked to be a rule
+RULE_SAMPLE = 6         # columns are sampled, not counted one by one
+
+
+def page_rules(pdf, page_no, page):
+    """Where the booklet prints a line across the page, in points.
+
+    NITE rules off one question from the next, and that line is the boundary
+    the page itself declares — worth more than any guess from word positions,
+    because a label belonging to the question below can sit closer to the
+    question above than its own number does. Rules are graphics, so the text
+    layer cannot see them; this looks at the page."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return []
+    import io
+    width, height, _ = page
+    png = crop(pdf, page_no, (0, 0, width, height), RULE_DPI)[0]
+    grey = Image.open(io.BytesIO(png)).convert('L')
+    w, h = grey.size
+    if not w or not h:
+        return []
+    pixels = grey.load()
+    columns = range(0, w, RULE_SAMPLE)
+    wanted = RULE_COVER * len(range(0, w, RULE_SAMPLE))
+
+    inked = [sum(1 for x in columns if pixels[x, y] <= 140) >= wanted for y in range(h)]
+    scale = height / float(h)
+    # One rule is a couple of pixels thick; report the middle of each run.
+    return [((run[0] + run[1]) / 2.0) * scale for run in runs_of(inked)]
+
+
+def runs_of(flags):
+    """The stretches where a flag is true, as (start, end) pairs."""
+    spans, start = [], None
+    for i, on in enumerate(flags):
+        if on and start is None:
+            start = i
+        elif not on and start is not None:
+            spans.append((start, i))
+            start = None
+    if start is not None:
+        spans.append((start, len(flags)))
+    return spans
+
+
+def question_bands(page, rules=()):
     """Question number -> the vertical strip of the page that belongs to it.
 
     The numbers sit in the margin the page reads from — right on an RTL page,
@@ -733,21 +819,55 @@ def question_bands(page):
                    for n in [number(x0, txt)] if n is not None)
     # The sub-header that opens the next run also closes this one, so the last
     # question of a run does not swallow it.
-    heads = sorted(w[1] for w in words if BBOX_SUBHEAD.search(w[4]))
+    heads = [top for top, _ in heading_rows(words)]
+    # Where a heading sits, its foot is the highest a band below it may reach.
+    stops = sorted(bottom for _, bottom in heading_rows(words, formulae=True))
 
-    bands = {}
-    for i, (top, n, _) in enumerate(marks):
-        bottom = marks[i + 1][0] if i + 1 < len(marks) else height - PAGE_MARGIN
-        head = next((y for y in heads if y > top + PAD), None)
-        if head is not None:
-            bottom = min(bottom, head)
-
+    def close(start, ceiling):
+        """Where a band starting at `start` runs out of content."""
+        stop = next((y for y in heads if y > start + PAD), None)
+        bottom = min(ceiling, stop) if stop is not None else ceiling
+        # A line ruled across the page ends the question above it, whatever sits
+        # in the gap: the page has already said where the boundary is.
+        rule = next((y for y in rules if y > start + PAD), None)
+        if rule is not None:
+            bottom = min(bottom, rule)
+        content = [w[3] for w in words if start <= w[1] and w[3] <= bottom]
         # The last question on a page otherwise reaches the foot of it, and all
         # that blank paper is what the picture gets scaled down to fit.
-        content = [w[3] for w in words if top <= w[1] and w[3] <= bottom]
-        if content:
-            bottom = min(bottom, max(content) + PAD)
-        bands[n] = (top - PAD / 2, bottom)
+        return min(bottom, max(content) + PAD) if content else bottom
+
+    # A first pass off the numbers alone, to find where each question's content
+    # runs out. Only used as a floor for the next pass, which is the real one.
+    rough = [close(top, marks[i + 1][0] if i + 1 < len(marks) else height - PAGE_MARGIN)
+             for i, (top, _, _) in enumerate(marks)]
+
+    # Then lift each number over whatever stands above it, one touching row at a
+    # time. Growing by contact rather than by distance is what separates a
+    # stacked fraction from the sub-header further up: the numerator is against
+    # the line it belongs to, the heading is a paragraph clear of it.
+    tops = []
+    for i, (top, n, _) in enumerate(marks):
+        # Never back over the question before, and never over a heading.
+        floor = rough[i - 1] if i else PAGE_MARGIN
+        ceiling = max(floor, top - MAX_LIFT, *[y for y in stops if y <= top])
+        lifted = top
+        while True:
+            touching = [w[1] for w in words
+                        if ceiling <= w[1] < lifted and w[3] >= lifted - LIFT_GAP
+                        and w[3] <= rough[i]]
+            if not touching or min(touching) >= lifted:
+                break
+            lifted = min(touching)
+        tops.append(lifted)
+
+    # Then close each band where the next one *starts*, which is its lifted top
+    # and not its number: a diagram belonging to the question below reaches up
+    # past its own number, and closing on the number would hand it to this one.
+    bands = {}
+    for i, (_, n, _) in enumerate(marks):
+        ceiling = tops[i + 1] if i + 1 < len(marks) else height - PAGE_MARGIN
+        bands[n] = (tops[i] - PAD / 2, close(tops[i], ceiling))
     return bands
 
 
@@ -794,11 +914,100 @@ def figure_box(page, band):
     return box if box[2] - box[0] <= MAX_FIGURE_WIDTH * width else None
 
 
-def band_box(page, band):
-    """The whole strip a question occupies — the fallback when the stem
-    promises a drawing that the columns failed to isolate."""
-    width, height, _ = page
-    return (PAGE_MARGIN / 2, band[0], width - PAGE_MARGIN / 2, band[1])
+def is_marker(word, width):
+    """Whether a word is the number printed beside a question.
+
+    The same test `question_bands` uses to find them: a Hebrew page prints
+    `.7` against the right margin, an English one `7.` against the left."""
+    x0, _, _, _, text = word
+    if BBOX_QN.match(text) and x0 > 0.8 * width:
+        return True
+    return bool(BBOX_QN_LTR.match(text) and x0 < 0.2 * width)
+
+
+def band_box(page, band, trim=False):
+    """The strip a question occupies.
+
+    Without `trim` this is the full width of the page — the fallback when the
+    stem promises a drawing the columns failed to isolate, where anything left
+    out might be the drawing.
+
+    With it, the box closes in on the words actually inside the band. A Hebrew
+    question is set to the right margin and leaves the left half of the page
+    empty, so the untrimmed strip is mostly paper: shown at a readable width it
+    wastes most of it on nothing. Trimming is what lets the question itself be
+    large."""
+    width, height, words = page
+    full = (PAGE_MARGIN / 2, band[0], width - PAGE_MARGIN / 2, band[1])
+    if not trim:
+        return full
+
+    inside = [w for w in words if w[1] >= band[0] and w[3] <= band[1]]
+    # The question's own number is left outside the box. A sitting draws its
+    # questions out of the booklet's order, so the number printed beside one is
+    # not the place it holds in the sitting, and showing it mid-exam is a
+    # distraction. The review names the question in its own heading.
+    body = [w for w in inside if not is_marker(w, width)]
+    if not body:
+        return full
+    left = max(PAGE_MARGIN / 2, min(w[0] for w in body) - PAD)
+    right = min(width - PAGE_MARGIN / 2, max(w[2] for w in body) + PAD)
+
+    # The padding must not reach back over the number it was just told to
+    # leave out: a marker sitting within PAD of the text would be pulled in
+    # again by the breathing room.
+    for marker in (w for w in inside if is_marker(w, width)):
+        if marker[0] > 0.5 * width:
+            right = min(right, marker[0] - 1)
+        else:
+            left = max(left, marker[2] + 1)
+    return (left, band[0], right, band[1]) if right > left else full
+
+
+def trimmed_box(pdf, page_no, page, band, dpi):
+    """The question's own box, narrowed to the words — unless something is out
+    there that the words do not account for.
+
+    A drawing carries no text, so a box built from word positions alone would
+    cut one in half. Rather than guess from the width, the margins the trim
+    would discard are cropped and looked at: blank paper on both sides means
+    the trim is safe, and ink means it is not."""
+    tight = band_box(page, band, trim=True)
+    full = band_box(page, band)
+    if tight == full:
+        return full
+
+    # What the trim discards, stopping short of the question's own number: its
+    # ink is the very thing being left out, and counting it would make every
+    # question look as though something were out there worth keeping.
+    width, _, words = page
+    inside = [w for w in words if w[1] >= band[0] and w[3] <= band[1]]
+    markers = [w for w in inside if is_marker(w, width)]
+    right_edge = min((w[0] for w in markers if w[0] > 0.5 * width), default=full[2])
+    left_edge = max((w[2] for w in markers if w[0] <= 0.5 * width), default=full[0])
+
+    for side in ((left_edge, band[0], tight[0], band[1]),
+                 (tight[2], band[0], right_edge, band[1])):
+        if side[2] - side[0] < 1:
+            continue
+        marks = ink(crop(pdf, page_no, side, dpi)[0], dpi)
+        # `None` means Pillow is missing and nothing can be checked; the full
+        # width is the answer that never loses anything.
+        if marks is None or marks > MIN_INK:
+            return full
+    return tight
+
+
+def fitting_dpi(box, dpi):
+    """The resolution that renders `box` about TARGET_PX wide.
+
+    Never below the resolution asked for, and never more than a few times it:
+    the point is to spend the same pixels on less paper, not to produce a
+    poster of one analogy."""
+    points = box[2] - box[0]
+    if points <= 0:
+        return dpi
+    return int(min(dpi * MAX_DPI_BOOST, max(dpi, TARGET_PX * 72.0 / points)))
 
 
 def ink(png, dpi):
@@ -870,7 +1079,7 @@ def passage_box(page):
     the line and a stem with a gap in it comes out reordered — so for a scanned
     booklet the page itself is the more faithful source."""
     width, height, words = page
-    heads = sorted(w[3] for w in words if BBOX_SUBHEAD.search(w[4]))
+    heads = sorted(bottom for _, bottom in heading_rows(words))
     if not heads:
         return None
     top = heads[0] + PAD
@@ -988,15 +1197,17 @@ def add_figures(chapters, pdf, dpi, whole=False):
             if page_no > len(pages):
                 continue
             page = pages[page_no - 1]
+            rules = page_rules(pdf, page_no, page)
 
-            for n, band in question_bands(page).items():
+            for n, band in question_bands(page, rules).items():
                 item = by_number.get(n)
                 if item is None or item.get('image'):
                     continue
 
                 if whole:
+                    box = trimmed_box(pdf, page_no, page, band, dpi)
                     item['image'] = data_uri(
-                        crop(pdf, page_no, band_box(page, band), dpi, 'jpeg'))
+                        crop(pdf, page_no, box, fitting_dpi(box, dpi), 'jpeg'))
                     # The picture carries the question; the scrambled text that
                     # came off the page would only contradict it.
                     item['stem'] = ''
@@ -1034,8 +1245,71 @@ def add_figures(chapters, pdf, dpi, whole=False):
 
 
 # ---------------------------------------------------------------------------
+# Conversion table
 
-def to_bank(chapters, answer_key, title, writing=None, session=None):
+SCALE_DOMAINS = ('verbal', 'quantitative', 'english')
+# Visual-order fragments of "ציוני גלם" and "בסולם האחיד" — the bbox layer
+# prints Hebrew reversed, so the table page is found by its reversed heading.
+SCALE_PAGE = ('םלג', 'דיחאה')
+SCALE_MIN_ROWS = 5      # a real column has a value per raw score, not a stray
+
+
+def read_scale(pdf):
+    """The booklet's own raw-to-uniform table, off the page that prints it.
+
+    NITE publishes a different conversion for every form, so scoring a sitting
+    on another booklet's table is wrong by up to twenty points in the middle of
+    the scale. The table is twelve columns — three blocks of english,
+    quantitative, verbal, raw score — laid out right to left."""
+    for width, height, words in read_boxes(pdf):
+        joined = ' '.join(w[4] for w in words)
+        if not all(mark in joined for mark in SCALE_PAGE):
+            continue
+        nums = [(w[0], w[1], int(w[4])) for w in words if re.fullmatch(r'\d{1,3}', w[4])]
+        if len(nums) < 100:
+            continue
+
+        columns = [c for c in x_clusters([(x, x) for x, _, _ in nums], gap=6.0)
+                   if sum(1 for x, _, _ in nums if c[0] <= x <= c[1]) >= SCALE_MIN_ROWS]
+        if len(columns) != 12:
+            return None, 'טבלת ההמרה נמצאה אך יש בה %d עמודות במקום 12.' % len(columns)
+
+        def column_of(x):
+            return next((i for i, c in enumerate(columns) if c[0] <= x <= c[1]), None)
+
+        rows = {}
+        for x, y, value in nums:
+            i = column_of(x)
+            if i is not None:
+                rows.setdefault(round(y / 4), {})[i] = value
+
+        table = {}
+        for cells in rows.values():
+            for block in (0, 4, 8):
+                cell = {c - block: v for c, v in cells.items() if block <= c < block + 4}
+                if 3 in cell:                       # the raw score closes each block
+                    table[cell[3]] = tuple(cell.get(i) for i in (2, 1, 0))
+
+        top = max(table, default=-1)
+        gaps = [r for r in range(top + 1) if r not in table]
+        if top < 40 or gaps:
+            return None, 'טבלת ההמרה חלקית — חסרים ציוני גלם %s.' % (gaps or '?')
+
+        scale = {}
+        for i, domain in enumerate(SCALE_DOMAINS):
+            column = [table[r][i] for r in range(top + 1)]
+            while column and column[-1] is None:    # each domain ends at its own 150
+                column.pop()
+            if not column or column[0] != 50 or column[-1] != 150 or None in column:
+                return None, 'עמודת %s בטבלת ההמרה אינה רציפה.' % domain
+            scale[domain] = column
+        return scale, None
+    return None, 'לא נמצאה טבלת המרה מציוני גלם לסולם האחיד.'
+
+
+# ---------------------------------------------------------------------------
+
+def to_bank(chapters, answer_key, title, writing=None, session=None, scale=None):
     sections, missing = [], 0
     for ch in chapters:
         items = []
@@ -1060,11 +1334,15 @@ def to_bank(chapters, answer_key, title, writing=None, session=None):
             'stimuli': [{k: v for k, v in s.items() if k != 'range'} for s in ch['stimuli']],
             'items': items,
         })
+    # Says the question pictures were cropped without their printed numbers.
+    # The migration that cleans older banks reads this and leaves them alone.
     meta = {'id': 'extracted', 'title': title, 'language': 'he',
-            'source': 'pdf_to_bank.py'}
+            'source': 'pdf_to_bank.py', 'numbersCropped': True}
     if session:
         meta['session'] = session
     bank = {'meta': meta}
+    if scale:
+        bank['scale'] = scale
     if writing:
         bank['writingTask'] = {k: v for k, v in writing.items() if k != 'page'}
     bank['sections'] = sections
@@ -1151,9 +1429,17 @@ def main():
         if a.question_images and writing:
             add_writing_image(writing, a.pdf, a.image_dpi)
 
+    # The conversion table is per-form, so it travels with the bank.
+    scale, scale_note = (read_scale(a.pdf) if a.pdf else (None, None))
+
     # An explicit --title wins; otherwise the booklet names itself.
     bank, missing = to_bank(
-        chapters, key, a.title or found or 'בחינה מחולצת', writing, session)
+        chapters, key, a.title or found or 'בחינה מחולצת', writing, session, scale)
+    if scale:
+        print('טבלת ההמרה של החוברת נקראה (%s).'
+              % ', '.join('%s 0-%d' % (d, len(scale[d]) - 1) for d in SCALE_DOMAINS))
+    elif scale_note:
+        print('אזהרה: %s הציונים יחושבו לפי טבלת ברירת המחדל.' % scale_note)
     if figures:
         items_done, items_wide, stimuli_done, figure_notes = figures
         if a.question_images:

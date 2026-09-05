@@ -4,16 +4,30 @@
  * Everything it touches outside itself is a port — screen, chrome, countdown,
  * file reader, saver — and the two use cases it drives. No `document` here. */
 
-import type { AnswerIndex, Bank, UnverifiedBank } from '../../domain/model/bank.ts';
-import type { Responses, TimeSpent } from '../../domain/model/scoring.ts';
+import type { AnswerIndex, Bank, Domain, UnverifiedBank } from '../../domain/model/bank.ts';
+import type {
+  AnsweredItem,
+  Responses,
+  ScoreReport,
+  TimeSpent,
+} from '../../domain/model/scoring.ts';
 import type { ItemStep, Sitting, Step, StimulusStep } from '../../domain/model/sitting.ts';
 import { RULES } from '../../domain/rules/rulebook.ts';
 import { formatDuration } from '../../domain/support/duration.ts';
 import { validateBank, type BankProblem } from '../../domain/services/bank-validator.ts';
 import type { Identity, SavedProgress, StoredBank } from './ports.ts';
 import { renderResults } from './views/results-view.ts';
+import { renderSummary } from './views/summary-view.ts';
+import { reviewChapters } from './views/results-view/chapter-review.ts';
+import { renderQuestionDetail } from './views/results-view/question-detail.ts';
+import { BUSY, renderBusy } from './views/busy.ts';
 import { SENDING_NOT_READY } from './views/notice.ts';
-import { renderSetup, type SetupConfig } from './views/setup-view.ts';
+import {
+  clampLibraryPage,
+  renderLibraryPage,
+  renderSetup,
+  type SetupConfig,
+} from './views/setup-view.ts';
 import {
   renderBreak,
   renderItem,
@@ -50,6 +64,12 @@ export class RunnerController {
   /** Set when the loaded bank came from the server, so a save can point back. */
   private bankId: string | null = null;
   private library: StoredBank[] = [];
+  /** Which page of the booklet shelf is showing. View state, not configuration:
+   *  it never travels with a saved run or a filed attempt. */
+  private libraryPage = 0;
+  /** What the overlay is saying, or null when nothing slow is happening. Kept
+   *  so a repaint mid-job puts it back rather than losing it. */
+  private busyLabel: string | null = null;
   private readonly deps: RunnerDeps;
 
   constructor(deps: RunnerDeps) {
@@ -69,6 +89,41 @@ export class RunnerController {
     void this.refreshAccount();
   }
 
+  /** The shelf and its pager. Bound on its own because turning a page replaces
+   *  only the shelf: repainting the whole setup screen would replay its
+   *  entrance animation, and the page would appear to flash on every press. */
+  private bindLibrary(): void {
+    const { screen } = this.deps;
+
+    for (const button of screen.all<HTMLElement>('.library-open'))
+      button.onclick = () => void this.openStored(button.dataset['bank'] ?? '');
+    for (const button of screen.all<HTMLElement>('.library-drop'))
+      button.onclick = () => void this.forgetStored(button.dataset['bank'] ?? '');
+
+    const turn = (by: number, id: string) => () => {
+      const shelf = screen.byId('library-body');
+      if (!shelf) return;
+      this.libraryPage = clampLibraryPage(this.libraryPage + by, this.library.length);
+      shelf.innerHTML = renderLibraryPage(this.library, this.libraryPage);
+      this.bindLibrary();
+
+      // The button just pressed was replaced with the rest of the shelf, so the
+      // keyboard would be left on nothing. At an end it is now disabled, and
+      // the other one is where the learner can still go.
+      const again = screen.byId<HTMLButtonElement>(id);
+      const landing =
+        again && !again.disabled
+          ? again
+          : screen.byId<HTMLButtonElement>(id === 'lib-next' ? 'lib-prev' : 'lib-next');
+      landing?.focus();
+    };
+
+    const prev = screen.byId('lib-prev');
+    if (prev) prev.onclick = turn(-1, 'lib-prev');
+    const next = screen.byId('lib-next');
+    if (next) next.onclick = turn(1, 'lib-next');
+  }
+
   /** Pulls who we are and what we uploaded before; a no-op offline. */
   private async refreshAccount(): Promise<void> {
     const account = this.deps.account;
@@ -82,7 +137,7 @@ export class RunnerController {
   // -- setup ---------------------------------------------------------------
 
   private showSetup(message: string | null = null): void {
-    const { screen, chrome, countdown } = this.deps;
+    const { chrome, countdown } = this.deps;
     countdown.stop();
     chrome.showTime(0, 0, false);
     chrome.showProgress(0);
@@ -91,7 +146,7 @@ export class RunnerController {
     const problems: BankProblem[] = this.bank ? validateBank(this.bank) : [];
     const preview = this.bank && !problems.length ? this.buildPreview() : null;
 
-    screen.render(
+    this.paint(
       renderSetup({
         message,
         bank: (this.bank as Bank | null) ?? null,
@@ -102,6 +157,7 @@ export class RunnerController {
         saved: this.savedRun(),
         identity: this.identity,
         library: this.library,
+        libraryPage: this.libraryPage,
       }),
     );
 
@@ -111,9 +167,8 @@ export class RunnerController {
   private async openStored(id: string): Promise<void> {
     const account = this.deps.account;
     if (!account || !id) return;
-    this.showSetup('טוען את החוברת…');
     try {
-      const bank = await account.open(id);
+      const bank = await this.working(BUSY.opening, () => account.open(id));
       this.bankId = id;
       this.adoptBank(bank);
     } catch {
@@ -124,8 +179,12 @@ export class RunnerController {
   private async forgetStored(id: string): Promise<void> {
     const account = this.deps.account;
     if (!account || !id) return;
-    await account.forget(id);
+    await this.working(BUSY.forgetting, () => account.forget(id));
     this.library = this.library.filter((bank) => bank.id !== id);
+    // Deleting the last booklet on a page takes that page with it. Kept in step
+    // here rather than only at render, so the next turn of the pager counts
+    // from where the learner is actually looking.
+    this.libraryPage = clampLibraryPage(this.libraryPage, this.library.length);
     this.showSetup();
   }
 
@@ -143,6 +202,8 @@ export class RunnerController {
       seed: this.config.seed,
       writingMinutes: this.config.writingMinutes,
       includeWriting: this.config.includeWriting,
+      domains: this.config.domains,
+      uncapped: this.config.uncapped,
     };
   }
 
@@ -179,10 +240,21 @@ export class RunnerController {
       wmin.onchange = () => this.reconfigure({ writingMinutes: Number(wmin.value) });
     const bp = screen.byId<HTMLSelectElement>('bp');
     if (bp) bp.onchange = () => this.reconfigure({ blueprint: bp.value });
-    const seed = screen.byId<HTMLInputElement>('seed');
+    const seed = screen.byId<HTMLSelectElement>('seed');
     if (seed) seed.onchange = () => this.reconfigure({ seed: seed.value });
     const skip = screen.byId<HTMLInputElement>('skipw');
     if (skip) skip.onchange = () => this.reconfigure({ includeWriting: !skip.checked });
+    const boxes = screen.all<HTMLInputElement>('.dom');
+    for (const box of boxes)
+      box.onchange = () => {
+        const picked = boxes.filter((b) => b.checked).map((b) => b.value as Domain);
+        // Unticking the last one would leave nothing to sit, so it stays ticked.
+        if (!picked.length) return void (box.checked = true);
+        this.reconfigure({ domains: picked });
+      };
+
+    const uncapped = screen.byId<HTMLInputElement>('uncapped');
+    if (uncapped) uncapped.onchange = () => this.reconfigure({ uncapped: uncapped.checked });
 
     const saved = this.savedRun();
     const resume = screen.byId('resume');
@@ -194,10 +266,7 @@ export class RunnerController {
         this.showSetup();
       };
 
-    for (const button of screen.all<HTMLElement>('.library-open'))
-      button.onclick = () => void this.openStored(button.dataset['bank'] ?? '');
-    for (const button of screen.all<HTMLElement>('.library-drop'))
-      button.onclick = () => void this.forgetStored(button.dataset['bank'] ?? '');
+    this.bindLibrary();
 
     const start = screen.byId('start');
     if (start) start.onclick = () => this.begin();
@@ -210,8 +279,14 @@ export class RunnerController {
 
   private async loadFile(file: File | undefined): Promise<void> {
     if (!file) return;
+    const attempt = await readAttempt(file);
+    if (attempt) return this.viewAttempt(attempt);
     try {
-      const loaded = await this.deps.bankFiles.read(file);
+      // A PDF goes to the server for poppler and python to chew on; that is
+      // seconds of nothing, and the reason the overlay exists.
+      const loaded = await this.working(BUSY.extracting, () =>
+        this.deps.bankFiles.read(file),
+      );
       this.bankId = loaded.storedId ?? null;
       this.adoptBank(loaded.bank);
       // The upload just added a booklet to the library; show it there too.
@@ -271,9 +346,8 @@ export class RunnerController {
     const account = this.deps.account;
     if (this.bank) return this.resume(saved);
     if (!account || !saved.bankId) return;
-    this.showSetup('טוען את החוברת…');
     try {
-      const bank = await account.open(saved.bankId);
+      const bank = await this.working(BUSY.opening, () => account.open(saved.bankId!));
       this.bankId = saved.bankId;
       this.bank = bank;
       this.resume(saved);
@@ -375,13 +449,13 @@ export class RunnerController {
 
   private showIntro(step: Extract<Step, { kind: 'section-intro' }>): void {
     this.deps.chrome.showTime(0, 0, false);
-    this.deps.screen.render(renderSectionIntro(step));
+    this.paint(renderSectionIntro(step));
     this.bindAdvance(once(() => this.next()));
   }
 
   private showBreak(step: Extract<Step, { kind: 'break' }>): void {
     const { screen, countdown } = this.deps;
-    screen.render(renderBreak(step, this.rules().breaks.skippable));
+    this.paint(renderBreak(step, this.rules().breaks.skippable));
 
     const bigClock = screen.byId('bigclock');
     const advance = once(() => this.next());
@@ -399,7 +473,7 @@ export class RunnerController {
 
   private showWriting(step: Extract<Step, { kind: 'writing' }>): void {
     const { screen } = this.deps;
-    screen.render(
+    this.paint(
       renderWriting({ ...step, essay: this.essay, canSend: Boolean(this.deps.postEssay) }),
     );
 
@@ -448,7 +522,7 @@ export class RunnerController {
   }
 
   private showStimulus(step: StimulusStep): void {
-    this.deps.screen.render(renderStimulus(step));
+    this.paint(renderStimulus(step));
     const advance = once(() => this.next());
     this.runClock(step.seconds, advance);
     this.bindAdvance(advance);
@@ -466,17 +540,8 @@ export class RunnerController {
           ) ?? null)
         : null);
 
-    const siblings = steps.filter(
-      (other): other is ItemStep => other.kind === 'item' && other.sectionId === step.sectionId,
-    );
-
-    screen.render(
-      renderItem({
-        step,
-        stimulus,
-        position: siblings.indexOf(step) + 1,
-        of: siblings.length,
-      }),
+    this.paint(
+      renderItem({ step, stimulus }),
     );
 
     const options = screen.all<HTMLElement>('.opt');
@@ -557,12 +622,17 @@ export class RunnerController {
     // Only a booklet the server holds can be scored there, so a sitting of a
     // locally dropped file is simply not filed.
     if (!account || !this.sitting || !this.bankId) return;
+    // Deliberately not behind the busy overlay: this is fired and forgotten so
+    // the results appear at once, and a spinner over them would be exactly the
+    // wait the caller is written to avoid.
     await account.record({
       bankId: this.bankId,
       blueprint: this.config.blueprint,
       seed: this.config.seed,
       writingMinutes: this.config.writingMinutes,
       includeWriting: this.config.includeWriting,
+      uncapped: this.config.uncapped,
+      domains: this.config.domains,
       responses: this.responses,
       spent: this.spent,
     });
@@ -574,6 +644,79 @@ export class RunnerController {
    * it on; nothing else has to change. */
   private sendEssay(): void {
     this.openNotice(SENDING_NOT_READY.id);
+  }
+
+  /** Every screen is painted through here, so the busy overlay is part of all
+   *  of them. A repaint while a job is running would otherwise wipe it. */
+  private paint(html: string): void {
+    this.deps.screen.render(html + renderBusy());
+    if (this.busyLabel !== null) this.showBusy(this.busyLabel);
+  }
+
+  /** Runs a slow job behind the overlay, and takes it down however the job
+   *  ends — an error must not leave the screen locked. */
+  private async working<T>(label: string, job: () => Promise<T>): Promise<T> {
+    this.busyLabel = label;
+    this.showBusy(label);
+    try {
+      return await job();
+    } finally {
+      this.busyLabel = null;
+      const overlay = this.deps.screen.byId('busy');
+      if (overlay) overlay.dataset['open'] = 'false';
+    }
+  }
+
+  private showBusy(label: string): void {
+    const { screen } = this.deps;
+    const overlay = screen.byId('busy');
+    if (!overlay) return;
+    const text = screen.byId('busy-label');
+    if (text) text.textContent = label;
+    overlay.dataset['open'] = 'true';
+  }
+
+  /** Opens a question from the review grid. The detail is painted on demand:
+   *  a booklet's worth of page scans is megabytes, and most of them are never
+   *  looked at. */
+  private bindReview(detail: readonly AnsweredItem[]): void {
+    const { screen } = this.deps;
+    const panel = screen.byId('qdetail');
+    if (!panel) return;
+
+    const chapters = reviewChapters(this.bank as Bank | null, detail);
+    const questions = new Map(
+      chapters.flatMap((domain) =>
+        domain.chapters.flatMap((chapter) =>
+          chapter.questions.map((question) => [question.itemId, question] as const),
+        ),
+      ),
+    );
+
+    // The panel keeps its place in the column rather than appearing and
+    // vanishing: a pane that collapses on close makes the grid beside it jump.
+    const empty = panel.innerHTML;
+    const close = (): void => {
+      panel.innerHTML = empty;
+      for (const cell of screen.all<HTMLElement>('.qcell')) cell.classList.remove('open');
+    };
+
+    for (const cell of screen.all<HTMLElement>('.qcell')) {
+      cell.onclick = () => {
+        const question = questions.get(cell.dataset['item'] ?? '');
+        if (!question) return;
+
+        for (const other of screen.all<HTMLElement>('.qcell')) other.classList.remove('open');
+        cell.classList.add('open');
+        panel.innerHTML = renderQuestionDetail(
+          this.bank as Bank | null,
+          question,
+          this.spent[question.itemId],
+        );
+        const shut = screen.byId('qdetail-close');
+        if (shut) shut.onclick = close;
+      };
+    }
   }
 
   /** Shows one of the modals rendered alongside the current screen. */
@@ -590,7 +733,7 @@ export class RunnerController {
   }
 
   private showResults(): void {
-    const { screen, chrome, countdown, scoreAttempt, saver } = this.deps;
+    const { screen, chrome, countdown, scoreAttempt } = this.deps;
     countdown.stop();
     this.deps.progress.clear();
     chrome.showTime(0, 0, false);
@@ -608,15 +751,28 @@ export class RunnerController {
       essay: this.essay,
     });
 
-    screen.render(
+    // The scoreboard first, then the full debrief behind a button: the shape of
+    // the result before the question-by-question account of it.
+    this.paint(renderSummary(attempt.score));
+    const full = screen.byId('full');
+    if (full) full.onclick = () => this.showFullResults(attempt.score);
+  }
+
+  private showFullResults(report: ScoreReport): void {
+    const { screen, saver } = this.deps;
+    this.paint(
       renderResults({
-        report: attempt.score,
+        report,
+        // A sitting was built from it, so by now it is a validated bank.
+        bank: this.bank as Bank | null,
         spent: this.spent,
         essay: this.essay,
         session: this.sessionName(),
         canSend: Boolean(this.deps.postEssay),
       }),
     );
+
+    this.bindReview(report.detail);
 
     const again = screen.byId('again');
     if (again) again.onclick = () => this.showSetup();
@@ -636,11 +792,68 @@ export class RunnerController {
     const download = screen.byId('dl');
     if (download)
       download.onclick = () =>
-        saver.save(`${sitting.meta.id ?? 'mapam'}-attempt.json`, attempt);
+        saver.save(`${this.sitting?.meta?.id ?? 'mapam'}-attempt.json`, {
+          meta: this.sitting?.meta ?? {},
+          responses: this.responses,
+          spent: this.spent,
+          essay: this.essay,
+          score: report,
+        });
+  }
+
+  /** Show a downloaded answers file the way the end of a sitting shows it.
+   *
+   *  The file carries its own marking — every question with what was given and
+   *  what was right — so nothing is re-scored. What it does not carry is the
+   *  booklet, and the review needs that for the chapter grid and the pictures,
+   *  so the booklet is matched by name against the shelf. */
+  private async viewAttempt(attempt: SavedAttempt): Promise<void> {
+    const title = attempt.meta?.title ?? '';
+    const stored = this.library.find((bank) => bank.title === title);
+
+    if (stored && (this.bank as Bank | null)?.meta?.title !== title) {
+      const account = this.deps.account;
+      if (!account) return this.showSetup('אין חיבור לשרת, ולכן אין מהיכן לטעון את החוברת.');
+      try {
+        this.bank = await this.working(BUSY.opening, () => account.open(stored.id));
+        this.bankId = stored.id;
+      } catch {
+        this.showSetup('לא ניתן לטעון את החוברת של התשובות האלה.');
+        return;
+      }
+    }
+
+    this.sitting = null;
+    this.spent = attempt.spent ?? {};
+    this.essay = attempt.essay ?? '';
+    this.paint(renderSummary(attempt.score));
+    const full = this.deps.screen.byId('full');
+    if (full) full.onclick = () => this.showFullResults(attempt.score);
   }
 
   private rules() {
     return this.sitting?.rules ?? RULES;
+  }
+}
+
+/** A downloaded answers file: the marking, and enough to name the booklet. */
+interface SavedAttempt {
+  meta?: { title?: string; session?: string };
+  spent?: TimeSpent;
+  essay?: string;
+  score: ScoreReport;
+}
+
+/** The file, if it is a set of answers rather than a booklet. `score.detail` is
+ *  what tells them apart — a bank has no marking in it. */
+async function readAttempt(file: File): Promise<SavedAttempt | null> {
+  if (!/\.json$/i.test(file.name)) return null;
+  try {
+    const parsed: unknown = JSON.parse(await file.text());
+    const attempt = parsed as SavedAttempt;
+    return Array.isArray(attempt?.score?.detail) ? attempt : null;
+  } catch {
+    return null;
   }
 }
 
@@ -663,5 +876,7 @@ function defaultConfig(bank?: UnverifiedBank): SetupConfig {
     blueprint: 'standard',
     seed: 'a',
     includeWriting: true,
+    domains: ['verbal', 'quantitative', 'english'],
+    uncapped: false,
   };
 }

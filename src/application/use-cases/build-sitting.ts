@@ -45,6 +45,8 @@ export class BuildSittingUseCase {
         ...(request.writingMinutes === undefined ? {} : { writingMinutes: request.writingMinutes }),
         ...(request.chapters === undefined ? {} : { chapters: request.chapters }),
         ...(request.introSeconds === undefined ? {} : { introSeconds: request.introSeconds }),
+        ...(request.domains === undefined ? {} : { domains: request.domains }),
+        ...(request.uncapped === undefined ? {} : { uncapped: request.uncapped }),
         ...(request.rules === undefined ? {} : { rules: request.rules }),
       },
       this.randomFactory(request.seed),

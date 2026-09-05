@@ -2,10 +2,9 @@
  * actually spent on it. */
 
 import type { Domain } from '../../../domain/model/bank.ts';
-import { typeLabel } from '../../../domain/rules/labels.ts';
-import { formatDuration } from '../../../domain/support/duration.ts';
 import { esc, paragraphs, when } from '../html.ts';
 import { renderNotice, SENDING_NOT_READY } from './notice.ts';
+import { reviewChapters, type ReviewedChapter, type ReviewedDomain } from './results-view/chapter-review.ts';
 
 const DOMAINS: [Domain, string][] = [
   ['verbal', 'חשיבה מילולית'],
@@ -17,12 +16,78 @@ import type { ResultsViewModel } from './results-view/results-view-model.ts';
 
 export type { ResultsViewModel } from './results-view/results-view-model.ts';
 
+const STATUS_LEGEND: [string, string][] = [
+  ['correct', 'תשובה נכונה'],
+  ['wrong', 'תשובה שגויה'],
+  ['blank', 'לא נענתה'],
+  ['not-asked', 'שאלה שלא נכללה במבחן'],
+];
+
+/** The booklet's chapters as a wall of marks, each one a way into the question.
+ *
+ *  Every question of the printed chapter is here, not only the ones this
+ *  sitting drew — the numbers are the booklet's own, so a mark can be found on
+ *  the page it came from. */
+function renderChapters(vm: ResultsViewModel): string {
+  const domains = reviewChapters(vm.bank, vm.report.detail);
+  if (!domains.length) return '';
+
+  return `
+    <div>
+      <p class="tag" style="margin-block-end:12px">שאלה אחר שאלה</p>
+      <div class="legend">
+        ${STATUS_LEGEND.map(
+          ([status, label]) =>
+            `<span class="legend-item"><span class="mark ${status}"></span>${esc(label)}</span>`,
+        ).join('')}
+      </div>
+      <div class="review-layout">
+        <div class="review-grids">${domains.map(renderDomainChapters).join('')}</div>
+        <div class="review-detail">
+          <div class="card qdetail" id="qdetail">
+            <p class="instruction qdetail-empty">בחרו שאלה כדי לראות אותה, מה סימנתם ומה התשובה הנכונה.</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderDomainChapters(domain: ReviewedDomain): string {
+  return `
+      <div class="chapter-domain">
+        <div class="chapter-domain-head">
+          <span>${esc(domain.label)}</span>
+          ${when(domain.percent !== null, `<b>${domain.percent}%</b>`)}
+        </div>
+        ${domain.chapters.map((chapter, i) => renderChapterGrid(chapter, i)).join('')}
+      </div>`;
+}
+
+function renderChapterGrid(chapter: ReviewedChapter, index: number): string {
+  return `
+        <div class="chapter">
+          <h4>חלק ${index + 1}</h4>
+          <div class="qgrid">
+            ${chapter.questions
+              .map(
+                (question) => `
+              <button class="qcell ${question.status}" data-item="${esc(question.itemId)}"
+                      aria-label="שאלה ${question.number}">
+                <span class="qnum">${question.number}</span>
+                <span class="mark ${question.status}"></span>
+              </button>`,
+              )
+              .join('')}
+          </div>
+        </div>`;
+}
+
 export function renderResults(vm: ResultsViewModel): string {
   const { report } = vm;
   const present = DOMAINS.filter(([domain]) => report.attempted[domain] > 0);
 
   return `
-  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(8dvh,64px)">
+  <div class="stage"><div class="sheet wide stagger" style="padding-block-start:min(8dvh,64px)">
     <header style="text-align:center">
       <p class="tag">סיימת</p>
       <h1 style="margin-block:12px 0">התוצאות</h1>
@@ -38,7 +103,12 @@ export function renderResults(vm: ResultsViewModel): string {
         .join('')}
     </div>
 
-    <div class="card">
+    ${
+      // A general score weighs all three domains together. Sit one of them and
+      // the other two score 50, which would read as a number rather than as a
+      // missing one — so it is withheld instead of published wrong.
+      present.length === DOMAINS.length
+        ? `<div class="card">
       <h3>אומדן ציון כללי</h3>
       <div class="stats" style="margin-block-start:16px">
         <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">רב־תחומי</div><div class="v">${report.general.multi}</div></div>
@@ -46,31 +116,18 @@ export function renderResults(vm: ResultsViewModel): string {
         <div class="stat" style="box-shadow:none;background:var(--sage-050)"><div class="k">דגש כמותי</div><div class="v">${report.general.quantEmphasis}</div></div>
       </div>
       <p class="instruction" style="margin:16px 0 0">בסולם 200–800, לפי טבלאות ההמרה של המועד הזה. האומדן מניח מבחן מלא ואינו כולל את מטלת הכתיבה.</p>
-    </div>
+    </div>`
+        : `<div class="card"><h3>אומדן ציון כללי</h3>
+      <p class="instruction" style="margin:10px 0 0">ציון כללי משוקלל משלושת התחומים. במושב חלקי הוא לא מחושב — הציונים שלמעלה הם מה שנמדד.</p>
+    </div>`
+    }
 
     ${when(
       vm.essay.trim(),
       `<div class="card"><h3>החיבור שלך</h3><div class="passage" style="max-height:32dvh">${paragraphs(vm.essay)}</div></div>`,
     )}
 
-    <div>
-      <p class="tag" style="margin-block-end:12px">שאלה אחר שאלה</p>
-      <table class="review">
-        <thead><tr><th>שאלה</th><th>סוג</th><th>תשובתך</th><th>נכונה</th><th>זמן</th></tr></thead>
-        <tbody>${report.detail
-          .map(
-            (d) => `
-          <tr>
-            <td class="n"><span class="dot ${d.given == null ? 'na' : d.correct ? 'ok' : 'no'}"></span>${esc(d.itemId)}</td>
-            <td>${esc(typeLabel(d.type))}</td>
-            <td class="n">${d.given == null ? '—' : d.given}</td>
-            <td class="n">${d.answer}</td>
-            <td class="n">${formatDuration(vm.spent[d.itemId] ?? 0)}</td>
-          </tr>`,
-          )
-          .join('')}</tbody>
-      </table>
-    </div>
+    ${renderChapters(vm)}
 
     <div class="controls">
       <button class="btn" id="again">להריץ שוב</button>

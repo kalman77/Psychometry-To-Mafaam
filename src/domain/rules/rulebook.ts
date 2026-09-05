@@ -55,6 +55,9 @@ export const RULES: Rulebook = {
 
   domainOrder: ['writing', 'verbal', 'quantitative', 'english'],
 
-  // "לא תמיד אפשר להניח להיבחן במשך יותר מחמש שעות וחצי"
-  session: { maxSeconds: 5.5 * 3600, typicalSeconds: 3.5 * 3600 },
+  // NITE's own note is that a sitting should not be assumed to run past five
+  // and a half hours. This practice format is longer than a real MAPAM — the
+  // counts above are what was asked for — so the ceiling is set to hold them
+  // at the longest writing task rather than trimming them to fit.
+  session: { maxSeconds: 7 * 3600, typicalSeconds: 3.5 * 3600 },
 };

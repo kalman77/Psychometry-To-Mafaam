@@ -10,6 +10,7 @@ export type { Direction } from './bank/direction.ts';
 export type { Domain } from './bank/domain.ts';
 export type { Item } from './bank/item.ts';
 export type { ItemType } from './bank/item-type.ts';
+export type { ScaleTable } from './bank/scale-table.ts';
 export type { Section } from './bank/section.ts';
 export type { SittingDomain } from './bank/sitting-domain.ts';
 export type { Stimulus } from './bank/stimulus.ts';

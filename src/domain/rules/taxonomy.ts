@@ -5,6 +5,13 @@ import type { StimulusSpec } from './taxonomy/stimulus-spec.ts';
 
 export type { StimulusSpec } from './taxonomy/stimulus-spec.ts';
 
+/** The three scored domains, in a fixed order.
+ *
+ *  Not `RULES.domainOrder`: that one is overridable and carries `writing`, and
+ *  resolving a blueprint's ranges has to walk the same sequence every time or
+ *  the same seed would stop meaning the same sitting. */
+export const SCORED_DOMAINS: readonly Domain[] = ['verbal', 'quantitative', 'english'];
+
 /** Order the item types appear in within a chapter, per domain. */
 export const TYPE_ORDER: Record<Domain, ItemType[]> = {
   verbal: ['analogy', 'sentence_completion', 'logic', 'reading_passage'],

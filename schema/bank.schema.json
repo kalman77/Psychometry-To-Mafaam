@@ -70,6 +70,44 @@
         }
       }
     },
+    "scale": {
+      "type": "object",
+      "description": "The booklet's printed raw-to-uniform conversion table. Indexed by raw score, valued 50-150. NITE publishes one per form; without it, scoring falls back to the built-in table.",
+      "properties": {
+        "verbal": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 150
+          },
+          "minItems": 2
+        },
+        "quantitative": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 150
+          },
+          "minItems": 2
+        },
+        "english": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 150
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "verbal",
+        "quantitative",
+        "english"
+      ]
+    },
     "sections": {
       "type": "array",
       "minItems": 1,

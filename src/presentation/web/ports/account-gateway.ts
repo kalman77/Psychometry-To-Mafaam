@@ -23,6 +23,12 @@ export interface FinishedAttempt {
   seed: string | null;
   writingMinutes: number;
   includeWriting: boolean;
+  /** Whether the 5.5-hour ceiling was lifted. It decides how many questions the
+   *  blueprint's ranges resolved to, so the server cannot rebuild this sitting
+   *  without it. */
+  uncapped: boolean;
+  /** Which domains were sat — the server rebuilds the same subset to mark it. */
+  domains: string[];
   responses: Record<string, number | null | undefined>;
   spent: Record<string, number>;
 }

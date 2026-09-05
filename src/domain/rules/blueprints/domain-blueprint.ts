@@ -5,7 +5,8 @@
  * domain is split into (micro-breaks go between them). */
 
 import type { ItemType } from '../../model/bank/item-type.ts';
+import type { Count } from './count.ts';
 
-export interface DomainBlueprint extends Partial<Record<ItemType, number>> {
+export interface DomainBlueprint extends Partial<Record<ItemType, Count>> {
   chapters: number;
 }

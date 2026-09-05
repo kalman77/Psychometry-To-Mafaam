@@ -5,7 +5,7 @@
  * small it says so (into `notes`) instead of silently shrinking the test. */
 
 import type { Domain } from '../model/bank.ts';
-import type { DomainBlueprint } from '../rules/blueprints.ts';
+import type { ResolvedDomainBlueprint } from '../rules/blueprints.ts';
 import type { Rulebook } from '../rules/rulebook.ts';
 import { typeLabel } from '../rules/labels.ts';
 import { STIMULUS_TYPES, TYPE_ORDER, stimulusSpec } from '../rules/taxonomy.ts';
@@ -14,7 +14,7 @@ import { sample, type RandomSource } from './random.ts';
 
 export function selectGroups(
   groups: ItemGroup[],
-  blueprint: DomainBlueprint | null | undefined,
+  blueprint: ResolvedDomainBlueprint | null | undefined,
   domain: Domain,
   rules: Rulebook,
   random: RandomSource,
@@ -94,8 +94,13 @@ export function intoChapters(
     if (bucket) bucket.push(group);
     else byType.set(group.type, [group]);
   }
-  for (const bucket of byType.values())
-    bucket.forEach((group, i) => chapters[i % n]!.push(group));
+  for (const [type, bucket] of byType)
+    bucket.forEach((group, i) =>
+      // A passage or a chart closes the section: it goes in the last half,
+      // where `TYPE_ORDER` then puts it after the standalone questions.
+      // Everything else deals evenly across the halves.
+      (type in STIMULUS_TYPES ? chapters[n - 1]! : chapters[i % n]!).push(group),
+    );
 
   const order = TYPE_ORDER[domain] ?? [];
   for (const chapter of chapters) {

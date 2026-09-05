@@ -145,7 +145,6 @@ export function renderItem(vm: ItemViewModel): string {
     <div class="topbar">
       <span class="tag">${esc(domainLabel(step.domain))}</span>
       <span class="tag dot">${esc(typeLabel(step.type))}</span>
-      <span class="tag dot">${vm.position} מתוך ${vm.of}</span>
       <span class="tag dot">${minutes} דק׳</span>
     </div>
     <div class="sheet ${width}${scan ? ' scan' : ''} centred">

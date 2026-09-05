@@ -1,7 +1,9 @@
 /* The opening screen: drop a bank, choose a length, start. */
 
+import type { Domain } from '../../../domain/model/bank/domain.ts';
 import type { BankProblem } from '../../../domain/services/bank-validator.ts';
 import type { Identity, SavedProgress, StoredBank } from '../ports.ts';
+import { VERSIONS, versionLabel } from '../../../domain/rules/labels.ts';
 import { minutesOf } from '../../../domain/support/duration.ts';
 import { esc, when } from '../html.ts';
 import type { SetupViewModel } from './setup-view/setup-view-model.ts';
@@ -11,29 +13,47 @@ export type { SetupViewModel } from './setup-view/setup-view-model.ts';
 
 export function renderSetup(vm: SetupViewModel): string {
   return `
-  <div class="stage"><div class="sheet narrow stagger" style="padding-block-start:min(11dvh,90px)">
-    <header style="text-align:center">
-      <p class="tag">מפע״ם · בחינה בזמן קצוב לכל שאלה</p>
-      <h1 style="margin-block:14px 12px">רגע אחד לכל שאלה</h1>
-      <p style="color:var(--muted);max-width:46ch;margin:0 auto">כל שאלה מקבלת את הזמן שהיא מקבלת במפע״ם. כשהזמן נגמר עוברים הלאה, ואין חזרה אחורה.</p>
-    </header>
+  <div class="stage setup-stage">
+    <div class="setup-wash" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="sheet narrow stagger" style="padding-block-start:min(9dvh,74px)">
+      <header class="hero">
+        <div class="hero-logo" role="img" aria-label="מפע״ם"></div>
+        <p class="tag hero-eyebrow">מפע״ם · בחינה בזמן קצוב לכל שאלה</p>
+        <h1 class="hero-title">רגע אחד לכל שאלה</h1>
+        <p class="hero-sub">כל שאלה מקבלת את הזמן שהיא מקבלת במפע״ם. כשהזמן נגמר עוברים הלאה, ואין חזרה אחורה.</p>
+      </header>
 
-    ${when(vm.message, `<div class="notice warn">${esc(vm.message)}</div>`)}
+      ${when(vm.message, `<div class="notice warn">${esc(vm.message)}</div>`)}
 
-    <div id="drop" class="drop">
-      <b>גררו לכאן חוברת בחינה או בנק שאלות</b><br>
-      <span style="color:var(--muted);font-size:15px">PDF של חוברת, או קובץ JSON מוכן</span>
-      <input id="file" type="file" accept=".json,application/json,.pdf,application/pdf" hidden>
+      <div class="intake">
+        <div id="drop" class="drop">
+          <span class="drop-mark" aria-hidden="true"></span>
+          <b>גררו לכאן חוברת בחינה או בנק שאלות</b>
+          <span class="drop-hint">PDF של חוברת, או קובץ JSON מוכן</span>
+          <input id="file" type="file" accept=".json,application/json,.pdf,application/pdf" hidden>
+        </div>
+        <div class="intake-or"><span>או</span></div>
+        <button class="btn quiet intake-demo" id="demo">להתחיל מבנק הדוגמה</button>
+      </div>
+
+      ${when(vm.identity, vm.identity ? renderAccount(vm.identity) : '')}
+      ${when(vm.library.length, renderLibrary(vm.library, vm.libraryPage))}
+      ${when(vm.saved, vm.saved ? renderResume(vm.saved) : '')}
+      ${vm.bank ? (vm.problems.length ? renderProblems(vm.problems) : renderReady(vm)) : ''}
     </div>
-    <div style="text-align:center;margin-block-start:-8px">
-      <button class="btn quiet" id="demo">להתחיל מבנק הדוגמה</button>
-    </div>
+  </div>`;
+}
 
-    ${when(vm.identity, vm.identity ? renderAccount(vm.identity) : '')}
-    ${when(vm.library.length, renderLibrary(vm.library))}
-    ${when(vm.saved, vm.saved ? renderResume(vm.saved) : '')}
-    ${vm.bank ? (vm.problems.length ? renderProblems(vm.problems) : renderReady(vm)) : ''}
-  </div></div>`;
+/** The offered versions, plus whatever the config already holds if it is not
+ *  one of them — a resumed run must keep its own seed, and silently swapping it
+ *  for the nearest option would rebuild a different paper. */
+function versionOptions(seed: string): string {
+  const offered = VERSIONS.some((version) => version.seed === seed)
+    ? VERSIONS
+    : [...VERSIONS, { seed, label: versionLabel(seed) }];
+  return offered
+    .map((v) => `<option value="${esc(v.seed)}"${sel(v.seed === seed)}>${esc(v.label)}</option>`)
+    .join('');
 }
 
 function renderAccount(identity: Identity): string {
@@ -49,12 +69,48 @@ const megabytes = (bytes: number): string => `${(bytes / 1e6).toFixed(1)} MB`;
 
 /** Booklets already on the server: uploading one is slow and it is the same
  *  file every time, so the second sitting should not need the PDF at all. */
-function renderLibrary(banks: StoredBank[]): string {
+/** The domains a sitting can be limited to. Order matches the booklet's. */
+const DOMAIN_CHOICES: [Domain, string][] = [
+  ['verbal', 'מילולי'],
+  ['quantitative', 'כמותי'],
+  ['english', 'אנגלית'],
+];
+
+/** Booklets to a page. More than a few and the shelf pushes the setup screen
+ *  off the bottom, which is where the length and the start button live. */
+export const LIBRARY_PAGE_SIZE = 3;
+
+/** The page `page` falls on, once the shelf has grown or shrunk under it. */
+export function libraryPageCount(total: number): number {
+  return Math.max(1, Math.ceil(total / LIBRARY_PAGE_SIZE));
+}
+
+export function clampLibraryPage(page: number, total: number): number {
+  return Math.max(0, Math.min(page, libraryPageCount(total) - 1));
+}
+
+function renderLibrary(banks: StoredBank[], page: number): string {
   return `
   <div class="card library">
     <h3>החוברות שלכם</h3>
+    <div id="library-body">${renderLibraryPage(banks, page)}</div>
+  </div>`;
+}
+
+/** Just the shelf: the rows on this page and the pager under them.
+ *
+ *  Kept apart from the card around it so turning a page can replace this much
+ *  and leave the screen alone — a repaint of the whole setup screen replays its
+ *  entrance animation, which reads as the page flashing every time. */
+export function renderLibraryPage(banks: StoredBank[], page: number): string {
+  const pages = libraryPageCount(banks.length);
+  const current = clampLibraryPage(page, banks.length);
+  const start = current * LIBRARY_PAGE_SIZE;
+  const showing = banks.slice(start, start + LIBRARY_PAGE_SIZE);
+
+  return `
     <ul class="library-list">
-      ${banks
+      ${showing
         .map(
           (bank) => `
         <li>
@@ -67,7 +123,16 @@ function renderLibrary(banks: StoredBank[]): string {
         )
         .join('')}
     </ul>
-  </div>`;
+    ${when(
+      pages > 1,
+      `<div class="library-pager">
+        <button class="btn quiet" id="lib-prev"${current === 0 ? ' disabled' : ''}>הקודם</button>
+        <span class="tag">עמוד ${current + 1} מתוך ${pages}</span>
+        <button class="btn quiet" id="lib-next"${
+          current >= pages - 1 ? ' disabled' : ''
+        }>הבא</button>
+      </div>`,
+    )}`;
 }
 
 /** How long ago a run was left, in the roundest words that are still true. */
@@ -128,7 +193,7 @@ function renderReady(vm: SetupViewModel): string {
             <option value="full"${sel(config.blueprint === 'full')}>כל מה שיש בבנק</option>
           </select>
           <label for="seed">גרסה</label>
-          <input type="text" id="seed" value="${esc(config.seed)}" style="width:70px">
+          <select id="seed">${versionOptions(config.seed)}</select>
         </div>
         <div class="field">
           <label for="wmin">מטלת כתיבה</label>
@@ -137,13 +202,30 @@ function renderReady(vm: SetupViewModel): string {
             .join('')}</select>
           <label><input type="checkbox" id="skipw"${config.includeWriting ? '' : ' checked'}> לדלג עליה</label>
         </div>
+        <div class="field">
+          <label>תחומים</label>
+          ${DOMAIN_CHOICES.map(
+            ([domain, label]) => `
+            <label><input type="checkbox" class="dom" value="${domain}"${
+              config.domains.includes(domain) ? ' checked' : ''
+            }> ${label}</label>`,
+          ).join('')}
+        </div>
+        <div class="field">
+          <label><input type="checkbox" id="uncapped"${config.uncapped ? ' checked' : ''}>
+            לאפשר מושב ארוך מ-${minutesOf(summary.maxSeconds)} דק׳</label>
+        </div>
         ${when(
           summary.overBudget,
-          `<div class="notice warn" style="margin-block-start:16px">המושב חורג מתקרת ${minutesOf(summary.maxSeconds)} הדקות. בחרו אורך קצר יותר.</div>`,
+          // Over the ceiling on purpose is a fact to state; over it by accident
+          // is something to fix, and only the second is a warning.
+          config.uncapped
+            ? `<div class="notice" style="margin-block-start:16px">המושב אורך ${minutesOf(summary.totalSeconds)} דק׳ — מעבר לתקרת ${minutesOf(summary.maxSeconds)} הדקות, כפי שביקשתם.</div>`
+            : `<div class="notice warn" style="margin-block-start:16px">המושב חורג מתקרת ${minutesOf(summary.maxSeconds)} הדקות. בחרו אורך קצר יותר, או אפשרו מושב ארוך.</div>`,
         )}
         ${when(
           summary.notes.length,
-          `<div class="notice" style="margin-block-start:16px"><b>הבנק קטן מהמתוכנן:</b><ul>${summary.notes
+          `<div class="notice" style="margin-block-start:16px"><b>הבנק קטן מהמתוכנן, ולכן המושב קצר מהצפוי:</b><ul>${summary.notes
             .map((n) => `<li>${esc(n)}</li>`)
             .join('')}</ul></div>`,
         )}

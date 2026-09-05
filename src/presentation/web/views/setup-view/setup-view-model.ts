@@ -22,4 +22,8 @@ export interface SetupViewModel {
   identity: Identity | null;
   /** Booklets this account extracted before, so a 6 MB PDF is uploaded once. */
   library: StoredBank[];
+  /** Which page of the library is showing. Not part of the config: it is where
+   *  the learner is looking, not how the sitting is built, and a saved run
+   *  should not carry it. */
+  libraryPage: number;
 }
